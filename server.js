@@ -4617,3 +4617,6 @@ app.get('/attendance', (req, res) => {
 server.listen(PORT, () => { 
     console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
+
+module.exports = app;
+
