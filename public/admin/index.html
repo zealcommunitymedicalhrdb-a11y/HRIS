@@ -847,7 +847,7 @@ async function loadEmployees(page = 1) {
             let statusClass = 'bg-gray-100 text-gray-700';
             if (emp.status === 'Active') statusClass = 'bg-green-100 text-green-700';
             else if (emp.status === 'Inactive') statusClass = 'bg-red-100 text-red-700';
-            else if (emp.status === 'On Leave') statusClass = 'bg-yellow-100 text-yellow-700';
+            else if (emp.status === 'vacation-leave') statusClass = 'bg-yellow-100 text-yellow-700';
 
             const row = `
             <tr class="border-b border-gray-200 hover:bg-gray-50 transition">

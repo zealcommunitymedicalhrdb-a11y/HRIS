@@ -2719,6 +2719,77 @@ app.put('/api/admin/leave-requests/approve/:id', async (req, res) => {
         request.approvedBy = adminId;
         await request.save();
 
+        // 🔴 CREATE ATTENDANCE AND SHIFT RECORDS FOR LEAVE DATES
+        // Get employee details
+        const collections = ['doctors', 'nurses', 'guards', 'staffs', 'admins', 'accountings'];
+        let employee = null;
+        let employeeName = request.employeeName || request.employeeId;
+        let employeeRole = '';
+        let employeeDepartment = '';
+
+        for (const collName of collections) {
+            const emp = await mongoose.connection.db.collection(collName).findOne({ employeeId: request.employeeId.toUpperCase() });
+            if (emp) {
+                employee = emp;
+                employeeName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || request.employeeId;
+                employeeRole = emp.position || emp.designation || collName.slice(0, -1);
+                employeeDepartment = emp.department || '';
+                break;
+            }
+        }
+
+        // Generate dates for the leave period
+        const startDate = new Date(request.startDate);
+        const endDate = new Date(request.endDate);
+        const attendanceRecords = [];
+        const shiftRecords = [];
+
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateString = d.toISOString().split('T')[0];
+            
+            // Create Attendance Record
+            const attendanceRecord = {
+                empId: request.employeeId.toUpperCase(),
+                name: employeeName,
+                checkIn: 'N/A',
+                checkOut: 'N/A',
+                status: 'vacation-leave',
+                duration: request.duration,
+                initials: employeeName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2),
+                color: '#FFA500', // Orange for leave
+                role: employeeRole,
+                date: dateString
+            };
+            attendanceRecords.push(attendanceRecord);
+
+            // Create Shift Record
+            const shiftRecord = {
+                employeeId: request.employeeId.toUpperCase(),
+                date: new Date(dateString),
+                shift: 'vacation-leave',
+                department: employeeDepartment,
+                notes: `${request.leaveType} leave approved by ${adminId}`
+            };
+            shiftRecords.push(shiftRecord);
+        }
+
+        // Insert records into database
+        if (attendanceRecords.length > 0) {
+            await Attendance.insertMany(attendanceRecords, { ordered: false }).catch(err => {
+                // Ignore duplicate key errors - records may already exist
+                if (err.code !== 11000) throw err;
+            });
+            console.log(`✅ Created ${attendanceRecords.length} attendance records for leave`);
+        }
+
+        if (shiftRecords.length > 0) {
+            await Shift.insertMany(shiftRecords, { ordered: false }).catch(err => {
+                // Ignore duplicate key errors
+                if (err.code !== 11000) throw err;
+            });
+            console.log(`✅ Created ${shiftRecords.length} shift records for leave`);
+        }
+
         const notification = new Notification({
             title: 'Leave Request Approved',
             message: `Your ${request.leaveType} leave has been approved.`,
@@ -2730,7 +2801,7 @@ app.put('/api/admin/leave-requests/approve/:id', async (req, res) => {
         await notification.save();
         io.emit('new-notification', notification);
 
-        res.json({ success: true, message: 'Leave request approved', request });
+        res.json({ success: true, message: 'Leave request approved and records created', request });
     } catch (err) {
         console.error('Approve leave request error:', err);
         res.status(500).json({ success: false, message: err.message });
@@ -2783,35 +2854,36 @@ app.get('/api/employee/leave-requests/:employeeId', async (req, res) => {
 app.get('/api/employee/leave-balance/:employeeId', async (req, res) => {
     try {
         const { employeeId } = req.params;
-        const currentYear = new Date().getFullYear();
+        
+        // Get current month date range
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        const monthStart = new Date(currentYear, currentMonth, 1);
+        const monthEnd = new Date(currentYear, currentMonth + 1, 0);
 
-        const leaveAllocation = {
-            'vacation': 15, 'sick': 10, 'personal': 3, 
-            'emergency': 3, 'maternity': 60, 'paternity': 7
-        };
-
-        const approvedLeaves = await LeaveRequest.find({
+        // Count "vacation-leave" shifts in current month (source of truth)
+        const leaveShifts = await Shift.find({
             employeeId: employeeId.toUpperCase(),
-            status: 'approved',
-            startDate: { $gte: new Date(`${currentYear}-01-01`), $lte: new Date(`${currentYear}-12-31`) }
+            shift: 'vacation-leave',
+            date: { $gte: monthStart, $lte: monthEnd }
         });
 
-        const usedDays = {};
-        Object.keys(leaveAllocation).forEach(type => usedDays[type] = 0);
+        // Calculate used days from actual shift records
+        const usedDays = leaveShifts.length;
+        const totalAllowance = 15; // 15 days per month
+        const remainingDays = Math.max(0, totalAllowance - usedDays);
 
-        approvedLeaves.forEach(leave => {
-            const daysDiff = Math.ceil((new Date(leave.endDate) - new Date(leave.startDate)) / (1000 * 60 * 60 * 24)) + 1;
-            let leaveDays = (leave.duration === 'half-am' || leave.duration === 'half-pm') ? 0.5 : daysDiff;
-            if (usedDays[leave.leaveType] !== undefined) usedDays[leave.leaveType] += leaveDays;
+        // Return balance in format frontend expects
+        res.json({ 
+            success: true, 
+            balance: {
+                used: usedDays,
+                total: totalAllowance,
+                remaining: remainingDays
+            },
+            totalRemaining: remainingDays 
         });
-
-        const balance = {};
-        Object.keys(leaveAllocation).forEach(type => {
-            const used = usedDays[type] || 0;
-            balance[type] = { total: leaveAllocation[type], used, remaining: Math.max(0, leaveAllocation[type] - used) };
-        });
-
-        res.json({ success: true, balance, totalRemaining: Object.values(balance).reduce((sum, item) => sum + item.remaining, 0) });
     } catch (err) {
         console.error('Fetch leave balance error:', err);
         res.status(500).json({ success: false, message: err.message });
@@ -4014,22 +4086,34 @@ app.get('/api/performance/history/:empId', async (req, res) => {
                 $addFields: {
                     parsedDuration: {
                         $cond: {
-                            if: { $regexMatch: { input: '$duration', regex: ' ' } }, // Check if contains space (Xh Ym format)
+                            if: { $in: ['$duration', ['full', 'half-am', 'half-pm', 'vacation-leave']] }, // Check if leave status
                             then: {
-                                $let: {
-                                    vars: {
-                                        hoursStr: { $arrayElemAt: [{ $split: ['$duration', 'h '] }, 0] },
-                                        minsStr: { $arrayElemAt: [{ $split: [{ $arrayElemAt: [{ $split: ['$duration', 'h '] }, 1] }, 'm'] }, 0] }
-                                    },
-                                    in: {
-                                        $add: [
-                                            { $toDouble: '$$hoursStr' },
-                                            { $divide: [{ $toDouble: '$$minsStr' }, 60] }
-                                        ]
-                                    }
+                                $cond: {
+                                    if: { $eq: ['$duration', 'full'] }, // Full day = 8 hours
+                                    then: 8,
+                                    else: 4 // Half day = 4 hours
                                 }
                             },
-                            else: { $toDouble: { $trim: { input: '$duration', chars: 'h' } } } // X.Yh format
+                            else: {
+                                $cond: {
+                                    if: { $regexMatch: { input: '$duration', regex: ' ' } }, // Check if contains space (Xh Ym format)
+                                    then: {
+                                        $let: {
+                                            vars: {
+                                                hoursStr: { $arrayElemAt: [{ $split: ['$duration', 'h '] }, 0] },
+                                                minsStr: { $arrayElemAt: [{ $split: [{ $arrayElemAt: [{ $split: ['$duration', 'h '] }, 1] }, 'm'] }, 0] }
+                                            },
+                                            in: {
+                                                $add: [
+                                                    { $toDouble: '$$hoursStr' },
+                                                    { $divide: [{ $toDouble: '$$minsStr' }, 60] }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    else: { $toDouble: { $trim: { input: '$duration', chars: 'h' } } } // X.Yh format
+                                }
+                            }
                         }
                     }
                 }
@@ -4082,22 +4166,34 @@ app.get('/api/performance/kpi/:empId', async (req, res) => {
                 $addFields: {
                     parsedDuration: {
                         $cond: {
-                            if: { $regexMatch: { input: '$duration', regex: ' ' } }, // Check if contains space (Xh Ym format)
+                            if: { $in: ['$duration', ['full', 'half-am', 'half-pm', 'vacation-leave']] }, // Check if leave status
                             then: {
-                                $let: {
-                                    vars: {
-                                        hoursStr: { $arrayElemAt: [{ $split: ['$duration', 'h '] }, 0] },
-                                        minsStr: { $arrayElemAt: [{ $split: [{ $arrayElemAt: [{ $split: ['$duration', 'h '] }, 1] }, 'm'] }, 0] }
-                                    },
-                                    in: {
-                                        $add: [
-                                            { $toDouble: '$$hoursStr' },
-                                            { $divide: [{ $toDouble: '$$minsStr' }, 60] }
-                                        ]
-                                    }
+                                $cond: {
+                                    if: { $eq: ['$duration', 'full'] }, // Full day = 8 hours
+                                    then: 8,
+                                    else: 4 // Half day = 4 hours
                                 }
                             },
-                            else: { $toDouble: { $trim: { input: '$duration', chars: 'h' } } } // X.Yh format
+                            else: {
+                                $cond: {
+                                    if: { $regexMatch: { input: '$duration', regex: ' ' } }, // Check if contains space (Xh Ym format)
+                                    then: {
+                                        $let: {
+                                            vars: {
+                                                hoursStr: { $arrayElemAt: [{ $split: ['$duration', 'h '] }, 0] },
+                                                minsStr: { $arrayElemAt: [{ $split: [{ $arrayElemAt: [{ $split: ['$duration', 'h '] }, 1] }, 'm'] }, 0] }
+                                            },
+                                            in: {
+                                                $add: [
+                                                    { $toDouble: '$$hoursStr' },
+                                                    { $divide: [{ $toDouble: '$$minsStr' }, 60] }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    else: { $toDouble: { $trim: { input: '$duration', chars: 'h' } } } // X.Yh format
+                                }
+                            }
                         }
                     }
                 }
@@ -4604,8 +4700,9 @@ app.get('/', (req, res) => {
 });
 
 // 3. CLEAN URLS: Map "/login" to the file
+// Specific route to serve the employee login
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/employee/login.html'));
+    res.sendFile(path.join(__dirname, 'public', 'employee', 'login.html'));
 });
 
 // 4. CLEAN URLS: Map "/dashboard" or "/attendance" (example)
