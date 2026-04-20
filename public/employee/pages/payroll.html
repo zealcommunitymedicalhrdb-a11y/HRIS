@@ -1,0 +1,187 @@
+<!-- My Payslips Page -->
+<div class="p-8">
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="col-span-2 space-y-6">
+            <!-- Payslip List -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-gray-900">Payslip History</h3>
+                        <select id="payslipYearFilter" onchange="filterPayslipsByYear()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm focus:outline-none">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="payslipLoadingState" class="p-6 text-center">
+                    <div class="inline-block">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#003D7A]"></div>
+                    </div>
+                    <p class="text-gray-600 mt-4">Loading your payslips...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="payslipEmptyState" class="hidden p-6 text-center">
+                    <div class="text-4xl text-gray-300 mb-2"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <p class="text-gray-600">No payslips available yet</p>
+                    <p class="text-sm text-gray-500">Contact your HR administrator for payroll information</p>
+                </div>
+
+                <!-- Payslip List Container -->
+                <div id="payslipListContainer" class="divide-y divide-gray-200"></div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-span-1 space-y-6">
+            <!-- Latest Payslip Summary -->
+            <div id="latestPayslipContainer" class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">Latest Payslip</h3>
+                <div id="latestPayslipContent" class="text-center py-8">
+                    <p class="text-gray-500">No payslips available</p>
+                </div>
+            </div>
+
+            <!-- Year-to-Date -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">Year-to-Date Summary</h3>
+                
+                <div id="ytdContent" class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-gray-600 text-sm">Total Earnings</span>
+                            <span id="ytdEarnings" class="font-bold text-gray-900">₱0.00</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="ytdEarningsBar" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-gray-600 text-sm">Total Deductions</span>
+                            <span id="ytdDeductions" class="font-bold text-gray-900">₱0.00</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="ytdDeductionsBar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-gray-600 text-sm">Tax Withheld (YTD)</span>
+                            <span id="ytdTax" class="font-bold text-gray-900">₱0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payslip View Modal -->
+<div id="payslipModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <!-- Fixed Header -->
+        <div class="flex-shrink-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-lg">
+            <h3 class="text-xl font-bold text-gray-900">Payslip - <span id="payslipMonth">--</span></h3>
+            <button onclick="closePayslipModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Company Header -->
+            <div class="flex items-center justify-between mb-6 pb-6 border-b">
+                <div class="flex items-center gap-3">
+                    <div class="bg-[#003D7A] p-3 rounded-xl">
+                        <i class="fas fa-hospital text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-900">ZealHR Healthcare</h4>
+                        <p class="text-sm text-gray-500">123 Medical Center Drive, Quezon City</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold text-gray-900">Pay Period</p>
+                    <p id="modalPayPeriod" class="text-sm text-gray-500">--</p>
+                </div>
+            </div>
+
+            <!-- Employee Info -->
+            <div class="grid grid-cols-2 gap-6 mb-6 pb-6 border-b">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Employee Name</p>
+                    <p id="modalEmployeeName" class="font-semibold text-gray-900">--</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Employee ID</p>
+                    <p id="modalEmployeeId" class="font-semibold text-gray-900">--</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Department</p>
+                    <p id="modalDepartment" class="font-semibold text-gray-900">--</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Position</p>
+                    <p id="modalPosition" class="font-semibold text-gray-900">--</p>
+                </div>
+            </div>
+
+            <!-- Earnings & Deductions -->
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <!-- Earnings -->
+                <div>
+                    <h4 class="font-bold text-gray-900 mb-4">Earnings</h4>
+                    <div id="modalEarningsContent" class="space-y-3">
+                    </div>
+                </div>
+
+                <!-- Deductions -->
+                <div>
+                    <h4 class="font-bold text-gray-900 mb-4">Deductions</h4>
+                    <div id="modalDeductionsContent" class="space-y-3">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Net Pay -->
+            <div class="bg-[#003D7A] text-white p-6 rounded-lg text-center">
+                <p class="text-blue-200 uppercase text-sm mb-2">Net Pay</p>
+                <p id="modalNetPay" class="text-4xl font-bold">₱0.00</p>
+                <p class="text-blue-200 text-sm mt-2">Monthly Pay</p>
+            </div>
+        </div>
+
+        <!-- Fixed Footer -->
+        <div class="flex-shrink-0 p-6 bg-gray-50 border-t flex justify-end gap-3 rounded-b-lg">
+            <button onclick="closePayslipModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                Close
+            </button>
+            <button onclick="printPayslip()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                <i class="fas fa-print mr-2"></i> Print
+            </button>
+            <button onclick="downloadCurrentPayslip()" class="px-6 py-2 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] transition">
+                <i class="fas fa-download mr-2"></i> Download PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Download Success Modal -->
+<div id="downloadSuccessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 text-center">
+        <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-check text-green-600 text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Download Started!</h3>
+        <p class="text-gray-600 mb-6">Your payslip for <span id="downloadMonth" class="font-semibold">--</span> is being downloaded.</p>
+        <button onclick="closeDownloadSuccessModal()" class="w-full px-6 py-3 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] transition font-medium">
+            OK
+        </button>
+    </div>
+</div>
+

@@ -1,0 +1,464 @@
+<!-- Performance Management System - Per Employee -->
+<div class="p-8">
+    <div class="grid grid-cols-4 gap-6">
+        <!-- Left Sidebar - Employee Selection -->
+        <div class="col-span-1 space-y-4">
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-sm font-bold text-[#003D7A] uppercase mb-4 tracking-wide">Select Employee</h3>
+                
+                <div class="space-y-1 max-h-96 overflow-y-auto" id="employeeList">
+                </div>
+            </div>
+
+            <!-- Performance Menu -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="text-sm font-bold text-gray-900 uppercase mb-4">Performance Sections</h3>
+                
+                <button class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm mt-2" onclick="showPerformanceSection('overview')">
+                    <i class="fas fa-chart-line"></i> Overview
+                </button>
+                
+                <button class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm mt-2" onclick="showPerformanceSection('kpi')">
+                    <i class="fas fa-bullseye"></i> KPI Tracking
+                </button>
+                <button class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium text-sm mt-2" onclick="showPerformanceSection('survey')">
+                    <i class="fas fa-file-contract"></i> Reviews Survey
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-span-3 space-y-6">
+            <!-- Overview Tab -->
+            <div id="overview-section" class="performance-section bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900" id="empName">Dr. Sarah Johnson</h2>
+                        <p class="text-gray-600 text-sm mt-1" id="empPosition">Senior Surgeon • EMP001</p>
+                    </div>
+                </div>
+
+                <!-- Performance Score Cards -->
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <!-- Overall Score -->
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+                        <p class="text-xs text-gray-600 font-semibold mb-2 uppercase">Overall Score</p>
+                        <div class="flex items-center justify-between">
+                            <p class="text-3xl font-bold text-blue-600" id="overallScore">0%</p>
+                            <span id="overallStatusBadge" class="bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">Unknown</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2" id="overallLastUpdated">Last Updated: N/A</p>
+                    </div>
+
+                    <!-- KPI Score -->
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
+                        <p class="text-xs text-gray-600 font-semibold mb-2 uppercase">KPI Achievement</p>
+                        <div class="flex items-center justify-between">
+                            <p class="text-3xl font-bold text-green-600" id="kpiScore">92%</p>
+                            <span class="text-green-700 text-xs font-semibold px-2 py-1">4.6/5</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">Target: 80%</p>
+                    </div>
+
+                    <!-- Review Rating -->
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4">
+                        <p class="text-xs text-gray-600 font-semibold mb-2 uppercase">Review Rating</p>
+                        <div class="flex items-center justify-between">
+                            <p class="text-3xl font-bold text-purple-600" id="reviewRating">5/5</p>
+                            <span class="text-purple-700 text-xs font-semibold px-2 py-1">⭐</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">Oct 2023</p>
+                    </div>
+                </div>
+
+                <!-- Performance Summary Grid -->
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- Current Status -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Current Status</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                                <span class="text-gray-700 font-medium">Performance Level</span>
+                                <span id="currentPerformanceLevel" class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">Unknown</span>
+                            </div>
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                                <span class="text-gray-700 font-medium">Attendance</span>
+                                <span id="currentAttendanceStatus" class="text-green-600 font-bold">0%</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700 font-medium">Last Review</span>
+                                <span class="text-gray-700">Oct 15, 2023</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Recent Activity</h3>
+                        <div id="recentActivityFallback" class="text-sm text-gray-500">No recent activity available yet.</div>
+                        <ul id="recentActivityList" class="space-y-3 text-sm hidden"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Tracking Tab -->
+            <div id="kpi-section" class="performance-section hidden bg-white rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">KPI Tracking - <span id="empNameKPI">Dr. Sarah Johnson</span></h2>
+
+                <!-- KPI Items -->
+                <div class="space-y-4">
+                    <!-- KPI 3 -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900">Medical Records Accuracy</h3>
+                                <p class="text-sm text-gray-600">Target: 98% accuracy rate</p>
+                            </div>
+                            <span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-3 py-1 rounded-full">On Target</span>
+                        </div>
+                        
+                        <div class="flex items-end gap-4 mb-4">
+                            <div>
+                                <p class="text-xs text-gray-600 font-semibold mb-1">Current Rate</p>
+                                <p class="text-4xl font-bold text-yellow-600" id="medRecordsAccuracyCurrentRate">98.2%</p>
+                                <p class="text-sm text-gray-600">accuracy</p>
+                            </div>
+                            <div class="flex-1">
+                                <div class="w-full bg-gray-200 rounded-full h-3">
+                                    <div class="bg-yellow-600 h-3 rounded-full" style="width: 100%"></div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-3xl font-bold text-yellow-600" id="medRecordsAccuracyTargetPercent">100%</p>
+                                <p class="text-xs text-gray-600">of target</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                            <div>
+                                <p class="text-xs text-gray-600">KPI Weight</p>
+                                <p class="text-lg font-bold text-gray-900">15%</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600">Score Contribution</p>
+                                <p class="text-lg font-bold text-yellow-600">+15%</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600">Status</p>
+                                <p class="text-lg font-bold text-yellow-600">→ Stable</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 4 -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">          
+                             <span id="performanceLevelBadge" class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">Excellent</span>
+                        </div>
+                        
+                        <div class="border rounded-lg p-4">
+                               <h3 class="text-gray-500 text-sm">Attendance Rate</h3>
+                                <div id="attendanceLabel" class="text-4xl font-bold">0%</div>
+                                <div class="w-full bg-gray-200 h-3 rounded-full mt-2">
+                              <div id="attendanceBar" class="bg-green-600 h-3 rounded-full" style="width: 0%"></div>
+                               </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                            <div>
+                                <p class="text-xs text-gray-600">KPI Weight</p>
+                                <p class="text-lg font-bold text-gray-900">15%</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600">Score Contribution</p>
+                                <p class="text-lg font-bold text-green-600">+15.45%</p>
+                            </div>
+                              <div>
+    <p class="text-xs text-gray-600">Days Absent</p>
+    <p class="text-lg font-bold text-gray-900" id="daysAbsentDisplay">0 days</p>
+</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 5 -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900">Staff Feedback Rating</h3>
+                                <p class="text-sm text-gray-600">Target: 4.0 out of 5.0</p>
+                            </div>
+                            <span class="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">Exceeding</span>
+                        </div>
+                        
+                        <div class="flex items-end gap-4 mb-4">
+                            <div>
+                                <p class="text-xs text-gray-600 font-semibold mb-1">Current Rating</p>
+                                <p class="text-4xl font-bold text-green-600" id="staffFeedbackRating">4.6</p>
+                                <p class="text-sm text-gray-600">out of 5.0</p>
+                            </div>
+                            <div class="flex-1">
+                                <div class="w-full bg-gray-200 rounded-full h-3">
+                                    <div class="bg-green-600 h-3 rounded-full" style="width: 92%"></div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-3xl font-bold text-green-600">115%</p>
+                                <p class="text-xs text-gray-600">of target</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                            <div>
+                                <p class="text-xs text-gray-600">KPI Weight</p>
+                                <p class="text-lg font-bold text-gray-900">20%</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600">Score Contribution</p>
+                                <p class="text-lg font-bold text-green-600">+23%</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600">Responses</p>
+                                <p class="text-lg font-bold text-gray-900" id="staffFeedbackResponses">18</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Summary -->
+                <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 mt-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">KPI Summary</h3>
+                    <div class="grid grid-cols-3 gap-6">
+                        <div>
+                            <p class="text-xs text-gray-600 uppercase font-semibold mb-2">Total KPI Score</p>
+                            <p class="text-4xl font-bold text-blue-600" id="kpiSummaryTotalScore">92%</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 uppercase font-semibold mb-2">Target Achievement</p>
+                            <p class="text-2xl font-bold text-green-600" id="kpiSummaryTargetAchievement">15 of 15 KPIs</p>
+                            <p class="text-xs text-gray-600" id="kpiSummaryTargetSubtext">100% achieved</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 uppercase font-semibold mb-2">Performance Status</p>
+                            <p class="text-2xl font-bold text-blue-600" id="kpiSummaryPerformanceStatus">Excellent</p>
+                            <p class="text-xs text-gray-600" id="kpiSummaryStatusComment">Above expectations</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reviews Tab -->
+            <div id="reviews-section" class="performance-section hidden bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Performance Reviews - <span id="empNameReview">Dr. Sarah Johnson</span></h2>
+                    <button onclick="openNewReviewModal()" class="bg-blue-800 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-900 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Create Review
+                    </button>
+                </div>
+
+                <!-- Review History -->
+                <div class="space-y-4">
+                    <!-- October 2023 Review -->
+                    <div class="border border-gray-200 rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900">Monthly Review - October 2023</h3>
+                                <p class="text-sm text-gray-600">Reviewed by: HR Manager</p>
+                            </div>
+                            <span class="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">Completed</span>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-4 mb-6">
+                            <div class="bg-blue-50 rounded p-3">
+                                <p class="text-xs text-gray-600 font-semibold">Overall Rating</p>
+                                <p class="text-2xl font-bold text-blue-600">5/5</p>
+                            </div>
+                            <div class="bg-green-50 rounded p-3">
+                                <p class="text-xs text-gray-600 font-semibold">KPI Score</p>
+                                <p class="text-2xl font-bold text-green-600">92%</p>
+                            </div>
+                            <div class="bg-yellow-50 rounded p-3">
+                                <p class="text-xs text-gray-600 font-semibold">Conduct</p>
+                                <p class="text-2xl font-bold text-yellow-600">Excellent</p>
+                            </div>
+                            <div class="bg-purple-50 rounded p-3">
+                                <p class="text-xs text-gray-600 font-semibold">Date</p>
+                                <p class="text-sm font-bold text-purple-600">Oct 15, 2023</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                            <p class="text-sm font-semibold text-gray-900 mb-2">Reviewer Comments</p>
+                            <p class="text-sm text-gray-700">Excellent performance this month. Dr. Johnson exceeded all KPI targets and continues to demonstrate outstanding clinical excellence and leadership. Patient satisfaction remains high and staff feedback is very positive. Highly recommended for advancement opportunities.</p>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button class="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 font-medium">View Full</button>
+                            <button class="flex-1 bg-blue-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-900 font-medium">Download PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Survey Tab -->
+            <div id="survey-section" class="performance-section hidden bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Performance Survey - <span id="empNameSurvey">Dr. Sarah Johnson</span></h2>
+                </div>
+
+                <!-- Survey Form -->
+                <div class="max-w-2xl mx-auto">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <p class="text-sm text-blue-900"><i class="fas fa-info-circle"></i> Please evaluate the employee's performance across the following dimensions.</p>
+                    </div>
+
+                    <form id="performanceSurveyForm" class="space-y-6">
+                        <!-- Technical Skills -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900">Technical Skills & Expertise</h3>
+                                    <p class="text-sm text-gray-600">Rate the employee's technical proficiency</p>
+                                </div>
+                                <span class="text-2xl font-bold text-blue-600" id="techScoreDisplay">0</span>
+                            </div>
+                            <input type="range" id="technical_skill" name="technical_skill" min="1" max="5" value="3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onchange="updateSurveyScore()">
+                            <div class="flex justify-between text-xs text-gray-600 mt-2">
+                                <span>Poor (1)</span>
+                                <span>Below Average (2)</span>
+                                <span>Average (3)</span>
+                                <span>Good (4)</span>
+                                <span>Excellent (5)</span>
+                            </div>
+                        </div>
+
+                        <!-- Task Completion -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900">Task Completion & Delivery</h3>
+                                    <p class="text-sm text-gray-600">Rate how well the employee completes assigned tasks</p>
+                                </div>
+                                <span class="text-2xl font-bold text-green-600" id="taskScoreDisplay">0</span>
+                            </div>
+                            <input type="range" id="task_completion" name="task_completion" min="1" max="5" value="3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onchange="updateSurveyScore()">
+                            <div class="flex justify-between text-xs text-gray-600 mt-2">
+                                <span>Poor (1)</span>
+                                <span>Below Average (2)</span>
+                                <span>Average (3)</span>
+                                <span>Good (4)</span>
+                                <span>Excellent (5)</span>
+                            </div>
+                        </div>
+
+                        <!-- Teamwork -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900">Teamwork & Collaboration</h3>
+                                    <p class="text-sm text-gray-600">Rate the employee's ability to work with others</p>
+                                </div>
+                                <span class="text-2xl font-bold text-purple-600" id="teamScoreDisplay">0</span>
+                            </div>
+                            <input type="range" id="teamwork" name="teamwork" min="1" max="5" value="3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onchange="updateSurveyScore()">
+                            <div class="flex justify-between text-xs text-gray-600 mt-2">
+                                <span>Poor (1)</span>
+                                <span>Below Average (2)</span>
+                                <span>Average (3)</span>
+                                <span>Good (4)</span>
+                                <span>Excellent (5)</span>
+                            </div>
+                        </div>
+
+                        <!-- Achievements -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <label class="block text-lg font-bold text-gray-900 mb-2">Key Achievements</label>
+                            <textarea id="achievements" name="achievements" rows="4" placeholder="Describe major achievements and accomplishments..." class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        </div>
+
+                        <!-- Challenges -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <label class="block text-lg font-bold text-gray-900 mb-2">Challenges & Areas for Improvement</label>
+                            <textarea id="challenges" name="challenges" rows="4" placeholder="Describe any challenges faced and areas for improvement..." class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        </div>
+
+                        <!-- Next Goals -->
+                        <div class="border border-gray-200 rounded-lg p-6">
+                            <label class="block text-lg font-bold text-gray-900 mb-2">Goals for Next Period</label>
+                            <textarea id="next_goal" name="next_goal" rows="4" placeholder="Define goals and expectations for the next review period..." class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        </div>
+
+                        <!-- Summary Card -->
+                        <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6">
+                            <h3 class="text-lg font-bold text-gray-900 mb-4">Survey Summary</h3>
+                            <div class="grid grid-cols-4 gap-4">
+                                <div>
+                                    <p class="text-xs text-gray-600 uppercase font-semibold">Average Score</p>
+                                    <p class="text-3xl font-bold text-blue-600" id="surveyAverage">0.0</p>
+                                    <p class="text-xs text-gray-600">out of 5</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-600 uppercase font-semibold">Percentage</p>
+                                    <p class="text-3xl font-bold text-green-600" id="surveyPercentage">0%</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-600 uppercase font-semibold">Performance Level</p>
+                                    <p class="text-lg font-bold text-purple-600" id="surveyLevel">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-600 uppercase font-semibold">Status</p>
+                                    <span id="surveyStatus" class="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">Ready to Submit</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Survey History / Trend -->
+                        <div id="surveyHistoryContainer" class="mt-6 border border-gray-200 rounded-lg p-4 bg-white">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-bold text-gray-900">Survey History & Trend</h3>
+                                <span id="surveyHistoryHint" class="text-xs text-gray-500">Last 5 surveys</span>
+                            </div>
+                            <p id="surveyHistoryFallback" class="text-sm text-gray-500">No survey data available yet. Submit a survey to see history and trend here.</p>
+                            <ul id="surveyHistoryList" class="space-y-3 hidden"></ul>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="flex gap-3 pt-4">
+                            <button type="button" onclick="submitPerformanceSurvey()" class="flex-1 bg-blue-800 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-900 transition-colors">
+                                <i class="fas fa-paper-plane"></i> Submit Survey
+                            </button>
+                            <button type="button" onclick="openGoogleFormModal()" class="flex-1 border border-gray-300 text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors hidden">
+                                <i class="fas fa-external-link-alt"></i> Google Form
+                            </button>
+                            <button type="reset" class="flex-1 border border-gray-300 text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+     </div>
+</div>
+
+<!-- Google Forms Modal -->
+<div id="googleFormModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden  ">
+    <div class="bg-white rounded-lg shadow-lg max-w-lg w-full mx-4">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-gray-900">Google Forms Integration</h3>
+            <p class="text-sm text-gray-600 mt-1">Connect to Google Forms for survey collection</p>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-900 mb-2">Google Form URL</label>
+                <input type="url" id="googleFormUrl" placeholder="https://docs.google.com/forms/d/..." class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-600 mt-2">Paste your Google Form URL here and it will be preloaded with employee data</p>
+            </div>
+        </div>
+        <div class="p-6 border-t border-gray-200 flex gap-3 justify-end">
+            <button onclick="closeGoogleFormModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">Cancel</button>
+            <button onclick="openGoogleForm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Open Form</button>
+        </div>
+    </div>
+</div>
+
+

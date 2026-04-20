@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zeal HRMS - Bulk QR Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+            .badge { break-inside: avoid; border: 1px solid #e2e8f0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 p-8">
+
+    <div class="max-w-4xl mx-auto no-print">
+        <h2 class="text-2xl font-bold text-[#003D7A] mb-6">Select Employees for QR Badges</h2>
+        
+        <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+            <table class="w-full text-left">
+                <thead class="bg-slate-100 border-b">
+                    <tr>
+                        <th class="p-4"><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+                        <th class="p-4">Employee ID</th>
+                        <th class="p-4">Role</th>
+                        <th class="p-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    </tbody>
+            </table>
+            <div class="p-4 border-t bg-slate-50 flex justify-between items-center">
+                <span id="selectedCount" class="text-sm text-gray-600">0 users selected</span>
+                <button onclick="generateSelected()" class="bg-blue-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0052A3]">
+                    Generate & Print Badges
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="printArea" class="badge-grid mt-10"></div>
+
+    <script>
+        // 1. Fetch all users from your collection
+        async function loadUsers() {
+            try {
+                // We use your sync route or create a simple list route
+                const response = await fetch('/api/admin/list-users'); 
+                const users = await response.json();
+                
+                const tbody = document.getElementById('userTableBody');
+                tbody.innerHTML = users.map(user => `
+                    <tr class="border-b hover:bg-blue-50 transition">
+                        <td class="p-4"><input type="checkbox" class="user-checkbox" data-id="${user.employeeId}" data-role="${user.role}" onchange="updateCount()"></td>
+                        <td class="p-4 font-mono font-bold">${user.employeeId}</td>
+                        <td class="p-4 capitalize">${user.role}</td>
+                        <td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Active</span></td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Failed to load users:", err);
+            }
+        }
+
+        function updateCount() {
+            const checked = document.querySelectorAll('.user-checkbox:checked').length;
+            document.getElementById('selectedCount').innerText = `${checked} users selected`;
+        }
+
+        function toggleAll(source) {
+            const checkboxes = document.querySelectorAll('.user-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateCount();
+        }
+
+        // 2. Generate the Badges
+        function generateSelected() {
+            const selected = document.querySelectorAll('.user-checkbox:checked');
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = ''; // Clear previous
+
+            selected.forEach(cb => {
+                const id = cb.getAttribute('data-id');
+                const role = cb.getAttribute('data-role');
+
+                const badge = document.createElement('div');
+                badge.className = "badge p-6 bg-white flex flex-col items-center rounded-lg shadow-sm border m-2 w-64 text-center";
+                badge.innerHTML = `
+                    <div class="text-[#003D7A] font-bold text-sm mb-2">ZEAL COMMUNITY</div>
+                    <div id="qr-${id}" class="mb-3"></div>
+                    <div class="text-lg font-black tracking-widest border-t pt-2 w-full">${id}</div>
+                    <div class="text-xs text-gray-500 uppercase font-semibold">${role}</div>
+                `;
+                printArea.appendChild(badge);
+
+                // Create the actual QR inside the badge
+                new QRCode(document.getElementById(`qr-${id}`), {
+                    text: id,
+                    width: 120,
+                    height: 120,
+                    colorDark: "#000000",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            });
+
+            // Trigger Print Dialog after small delay for QR rendering
+            setTimeout(() => { window.print(); }, 500);
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

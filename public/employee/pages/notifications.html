@@ -1,0 +1,253 @@
+<!-- Employee Notifications Page -->
+<div class="p-8 space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">My Notifications</h1>
+            <p class="text-gray-600">Stay updated with important announcements and updates</p>
+        </div>
+        <button onclick="markAllNotificationsRead()" class="border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 hover:bg-gray-50 transition">
+            <i class="fas fa-check-double"></i>
+            Mark All as Read
+        </button>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-1 inline-flex">
+        <button onclick="filterEmployeeNotifications('all', this)" class="emp-notif-filter px-4 py-2 rounded-lg text-sm font-medium bg-[#003D7A] text-white transition">All</button>
+        <button onclick="filterEmployeeNotifications('unread', this)" class="emp-notif-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Unread</button>
+        <button onclick="filterEmployeeNotifications('schedule', this)" class="emp-notif-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Schedule</button>
+        <button onclick="filterEmployeeNotifications('leave', this)" class="emp-notif-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Leave</button>
+        <button onclick="filterEmployeeNotifications('payroll', this)" class="emp-notif-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Payroll</button>
+        <button onclick="filterEmployeeNotifications('announcement', this)" class="emp-notif-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Announcements</button>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <!-- Today Section -->
+        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-700 text-sm">Today</h3>
+        </div>
+
+        <!-- Notification 1 - Leave Approved -->
+        <div class="emp-notif-item border-b border-gray-200 p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="true" data-type="leave">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-900">Leave Request Approved</p>
+                            <p class="text-sm text-gray-600 mt-1">Your vacation leave request for March 15-16, 2026 has been approved by Dr. Michael Chen (HR Manager).</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            <span class="text-xs text-gray-400">2 hours ago</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 transition">View Details</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification 2 - Schedule Update -->
+        <div class="emp-notif-item border-b border-gray-200 p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="true" data-type="schedule">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-calendar-alt text-blue-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-900">Schedule Updated</p>
+                            <p class="text-sm text-gray-600 mt-1">Your shift on March 5, 2026 has been changed from 8AM-4PM to 12PM-8PM. Please acknowledge this change.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            <span class="text-xs text-gray-400">5 hours ago</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="bg-[#003D7A] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#0052A3] transition">Acknowledge</button>
+                        <button class="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 transition">View Schedule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yesterday Section -->
+        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-700 text-sm">Yesterday</h3>
+        </div>
+
+        <!-- Notification 3 - Payslip Available -->
+        <div class="emp-notif-item border-b border-gray-200 p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="false" data-type="payroll">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-file-invoice-dollar text-orange-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Payslip Available</p>
+                            <p class="text-sm text-gray-600 mt-1">Your February 2026 payslip is now available for download. Net pay: ₱85,450.00</p>
+                        </div>
+                        <span class="text-xs text-gray-400">Yesterday, 3:00 PM</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="bg-[#003D7A] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#0052A3] transition flex items-center gap-1">
+                            <i class="fas fa-download text-xs"></i> Download Payslip
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification 4 - Announcement -->
+        <div class="emp-notif-item border-b border-gray-200 p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="false" data-type="announcement">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-bullhorn text-purple-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">New Announcement from HR</p>
+                            <p class="text-sm text-gray-600 mt-1">Emergency Meeting - All Staff: Please attend the mandatory meeting on March 3rd at 2:00 PM in Conference Room A.</p>
+                        </div>
+                        <span class="text-xs text-gray-400">Yesterday, 10:30 AM</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 transition">Read Full Announcement</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- This Week Section -->
+        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-700 text-sm">This Week</h3>
+        </div>
+
+        <!-- Notification 5 - Performance Review -->
+        <div class="emp-notif-item border-b border-gray-200 p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="false" data-type="announcement">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-star text-yellow-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Performance Review Scheduled</p>
+                            <p class="text-sm text-gray-600 mt-1">Your Q1 2026 performance review has been scheduled for April 10, 2026 at 10:00 AM with Dr. Michael Chen.</p>
+                        </div>
+                        <span class="text-xs text-gray-400">Feb 27, 2026</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 transition">Add to Calendar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification 6 - Training -->
+        <div class="emp-notif-item border-b border-gray-200 p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="false" data-type="announcement">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-graduation-cap text-teal-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Training Completed</p>
+                            <p class="text-sm text-gray-600 mt-1">Congratulations! You have successfully completed the "Advanced Surgical Techniques" training course.</p>
+                        </div>
+                        <span class="text-xs text-gray-400">Feb 25, 2026</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 transition flex items-center gap-1">
+                            <i class="fas fa-certificate text-xs"></i> View Certificate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification 7 - Document Reminder -->
+        <div class="emp-notif-item p-5 hover:bg-gray-50 cursor-pointer transition" data-unread="false" data-type="announcement">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-red-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Document Expiring Soon</p>
+                            <p class="text-sm text-gray-600 mt-1">Your Medical License will expire in 60 days (April 30, 2026). Please submit renewal documents to HR.</p>
+                        </div>
+                        <span class="text-xs text-gray-400">Feb 24, 2026</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700 transition">Upload Renewal</button>
+                        <button class="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 transition">Remind Me Later</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load More -->
+    <div class="text-center">
+        <button class="text-[#003D7A] hover:text-[#0052A3] font-medium text-sm flex items-center gap-2 mx-auto">
+            <i class="fas fa-history"></i>
+            Load Older Notifications
+        </button>
+    </div>
+</div>
+
+<script>
+    function filterEmployeeNotifications(type, clickedBtn) {
+        document.querySelectorAll('.emp-notif-filter').forEach(btn => {
+            btn.classList.remove('bg-[#003D7A]', 'text-white');
+            btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+        });
+        clickedBtn.classList.remove('text-gray-600', 'hover:bg-gray-100');
+        clickedBtn.classList.add('bg-[#003D7A]', 'text-white');
+
+        document.querySelectorAll('.emp-notif-item').forEach(item => {
+            if (type === 'all') {
+                item.style.display = 'block';
+            } else if (type === 'unread') {
+                item.style.display = item.dataset.unread === 'true' ? 'block' : 'none';
+            } else {
+                item.style.display = item.dataset.type === type ? 'block' : 'none';
+            }
+        });
+    }
+
+    function markAllNotificationsRead() {
+        document.querySelectorAll('.emp-notif-item[data-unread="true"]').forEach(item => {
+            item.dataset.unread = 'false';
+            const dot = item.querySelector('.w-2.h-2.bg-blue-500');
+            if (dot) dot.remove();
+        });
+        alert('All notifications marked as read');
+    }
+</script>

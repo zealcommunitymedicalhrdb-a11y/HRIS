@@ -1,0 +1,230 @@
+<!-- Leave Requests Page -->
+<div class="p-8">
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="col-span-2 space-y-6">
+            <!-- New Leave Request Form -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-6">Submit Leave Request</h3>
+                
+                <form id="leaveForm" onsubmit="submitLeaveRequest(event)" class="space-y-6">
+                    <!-- Leave Balance Display -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-semibold text-blue-900">Leave Balance</h4>
+                                <p class="text-sm text-blue-700">Total available: <span id="totalLeaveBalance">0</span>/15 days</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold text-blue-600" id="remainingDays">0</p>
+                                <p class="text-xs text-blue-700">days remaining</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 w-full bg-blue-200 rounded-full h-2">
+                            <div id="leaveProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Leave Type</label>
+                            <select name="leaveType" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                                <option value="">Select leave type</option>
+                                <option value="vacation">Vacation Leave</option>
+                                <option value="sick">Sick Leave</option>
+                                <option value="personal">Personal Leave</option>
+                                <option value="emergency">Emergency Leave</option>
+                                <option value="maternity">Maternity Leave</option>
+                                <option value="paternity">Paternity Leave</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Duration</label>
+                            <select name="duration" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                                <option value="full">Full Day</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
+                            <select id="startDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]" required>
+                                <option value="">Select start date</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
+                            <select id="endDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]" required>
+                                <option value="">Select end date</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Reason</label>
+                        <textarea name="reason" rows="3" placeholder="Please provide a reason for your leave request..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Attach Documents (Optional)</label>
+                        <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#003D7A] transition cursor-pointer">
+                            <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handleFileSelect(event)">
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl mb-2"></i>
+                            <p class="text-gray-600 text-sm">Drag and drop files here or click to browse</p>
+                            <p class="text-gray-400 text-xs mt-1">PDF, JPG, PNG up to 5MB</p>
+                        </div>
+                        <!-- File List -->
+                        <div id="fileList" class="mt-3 space-y-2 hidden"></div>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-6 py-2 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] transition">
+                            <i class="fas fa-paper-plane mr-2"></i> Submit Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Leave History -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900">Leave History</h3>
+                </div>
+
+                <div class="divide-y divide-gray-200">
+                    <!-- Pending Leave -->
+                    <div class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-yellow-100 p-3 rounded-lg">
+                                    <i class="fas fa-hourglass-half text-yellow-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">Vacation Leave</p>
+                                    <p class="text-sm text-gray-500">Mar 15 - Mar 16, 2026 (2 days)</p>
+                                    <p class="text-xs text-gray-400 mt-1">Submitted: Feb 28, 2026</p>
+                                </div>
+                            </div>
+                            <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium">Pending</span>
+                        </div>
+                    </div>
+
+                    <!-- Approved Leave -->
+                    <div class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-green-100 p-3 rounded-lg">
+                                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">Sick Leave</p>
+                                    <p class="text-sm text-gray-500">Feb 10, 2026 (1 day)</p>
+                                    <p class="text-xs text-gray-400 mt-1">Approved by: Dr. Michael Chen</p>
+                                </div>
+                            </div>
+                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">Approved</span>
+                        </div>
+                    </div>
+
+                    <!-- Approved Leave -->
+                    <div class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-green-100 p-3 rounded-lg">
+                                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">Personal Leave</p>
+                                    <p class="text-sm text-gray-500">Jan 20, 2026 (Half Day - AM)</p>
+                                    <p class="text-xs text-gray-400 mt-1">Approved by: Dr. Michael Chen</p>
+                                </div>
+                            </div>
+                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">Approved</span>
+                        </div>
+                    </div>
+
+                    <!-- Declined Leave -->
+                    <div class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-red-100 p-3 rounded-lg">
+                                    <i class="fas fa-times-circle text-red-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">Vacation Leave</p>
+                                    <p class="text-sm text-gray-500">Dec 24 - Dec 26, 2025 (3 days)</p>
+                                    <p class="text-xs text-red-500 mt-1">Reason: Peak season - insufficient staff coverage</p>
+                                </div>
+                            </div>
+                            <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">Declined</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-span-1 space-y-6">
+            <!-- Leave Balance -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">Leave Balance (2026)</h3>
+                
+                <div class="space-y-4" id="leaveBalanceDetails">
+                    <!-- Dynamic content will be loaded here -->
+                    <div class="text-center text-gray-500 py-4">
+                        <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                        <p>Loading leave balance...</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-gray-900">Total Available</span>
+                        <span class="text-2xl font-bold text-[#003D7A]" id="sidebarTotalAvailable">0/15 days</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leave Policy -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-blue-900">Leave Policy</p>
+                        <p class="text-xs text-blue-700 mt-1">Leave requests must be submitted at least 3 days in advance. Emergency leaves require documentation within 24 hours.</p>
+                        <button class="mt-2 text-[#003D7A] text-xs font-medium hover:underline">View Full Policy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Request Success Modal -->
+<div id="leaveSuccessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 text-center">
+        <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-check text-green-600 text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h3>
+        <p class="text-gray-600 mb-6">Your leave request has been submitted successfully. It is now pending approval from the administrator. You will be notified once it has been reviewed.</p>
+        <button onclick="closeLeaveSuccessModal()" class="w-full px-6 py-3 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] transition font-medium">
+            OK
+        </button>
+    </div>
+</div>
+
+<script>
+    // Redirect direct page access back to the employee shell so the page script is loaded correctly
+    if (window.location.pathname.endsWith('/pages/leave.html')) {
+        const target = window.location.pathname.replace('/pages/leave.html', '/index.html#leave');
+        if (window.location.href !== target) {
+            window.location.href = target;
+        }
+    }
+</script>
+
+

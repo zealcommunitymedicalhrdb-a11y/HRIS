@@ -1,0 +1,130 @@
+<!-- My Performance Page -->
+<div class="p-8">
+    <!-- Performance Overview -->
+    <div class="grid grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="bg-blue-100 p-3 rounded-lg">
+                    <i class="fas fa-chart-line text-[#003D7A] text-xl"></i>
+                </div>
+                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-medium" id="overallScoreChange">+5%</span>
+            </div>
+            <p class="text-gray-600 text-sm mb-1">Overall Score</p>
+            <h2 class="text-3xl font-bold text-gray-900" id="overallScore">98%</h2>
+            <p class="text-xs text-gray-500 mt-1" id="performanceLevel">Excellent</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="bg-green-100 p-3 rounded-lg">
+                    <i class="fas fa-bullseye text-green-600 text-xl"></i>
+                </div>
+            </div>
+            <p class="text-gray-600 text-sm mb-1">Attendance Rate</p>
+            <h2 class="text-3xl font-bold text-gray-900" id="attendanceRate">85%</h2>
+            <p class="text-xs text-gray-500 mt-1" id="attendanceStatus">Good</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="bg-yellow-100 p-3 rounded-lg">
+                    <i class="fas fa-star text-yellow-600 text-xl"></i>
+                </div>
+            </div>
+            <p class="text-gray-600 text-sm mb-1">Survey Rating</p>
+            <h2 class="text-3xl font-bold text-gray-900" id="surveyRating">4.5</h2>
+            <p class="text-xs text-gray-500 mt-1">Out of 5.0</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="bg-purple-100 p-3 rounded-lg">
+                    <i class="fas fa-award text-purple-600 text-xl"></i>
+                </div>
+            </div>
+            <p class="text-gray-600 text-sm mb-1">Present Days</p>
+            <h2 class="text-3xl font-bold text-gray-900" id="presentDays">18</h2>
+            <p class="text-xs text-gray-500 mt-1">This month</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="col-span-2 space-y-6">
+            <!-- KPI Progress -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Key Performance Indicators</h3>
+                    <span class="text-sm text-gray-500" id="currentQuarter">Q1 2026</span>
+                </div>
+
+                <div class="space-y-6" id="kpiContainer">
+                    <!-- KPIs will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Recent Reviews -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Performance Reviews</h3>
+                    <a href="#" class="text-[#003D7A] hover:underline text-sm font-medium">View All</a>
+                </div>
+
+                <div class="space-y-4" id="reviewsContainer">
+                    <!-- Reviews will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-span-1 space-y-6">
+            <!-- Achievements -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">Recent Achievements</h3>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div class="bg-yellow-400 p-2 rounded-full">
+                            <i class="fas fa-trophy text-yellow-800"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">Employee of the Month</p>
+                            <p class="text-xs text-gray-500">March 2026</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div class="bg-blue-500 p-2 rounded-full">
+                            <i class="fas fa-star text-white"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">5-Star Patient Rating</p>
+                            <p class="text-xs text-gray-500">50+ Reviews</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div class="bg-green-500 p-2 rounded-full">
+                            <i class="fas fa-certificate text-white"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">Leadership Certification</p>
+                            <p class="text-xs text-gray-500">Feb 2026</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Review -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-calendar-alt text-blue-600 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-blue-900">Next Review</p>
+                        <p class="text-xs text-blue-700 mt-1">Q1 2026 performance review scheduled for April 10, 2026</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

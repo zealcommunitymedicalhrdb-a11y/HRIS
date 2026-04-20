@@ -1,0 +1,497 @@
+<!-- My Profile Page -->
+<div id="profileMainContainer" class="p-8">
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Profile Card -->
+        <div class="col-span-1">
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <!-- Header Background -->
+                <div class="h-24 bg-gradient-to-r from-[#003D7A] to-[#0052A3]"></div>
+                
+                <!-- Profile Info -->
+                <div class="px-6 pb-6 -mt-12">
+                    <div class="w-24 h-24 rounded-full bg-white p-1 shadow-lg mx-auto mb-4">
+                        <img id="profileImage" src="/uploads/profiles/default-avatar.png" alt="Profile" class="w-full h-full rounded-full object-cover" onerror="this.src='/uploads/profiles/default-avatar.png'">
+                    </div>
+                    
+                    <div class="text-center">
+                        <h2 id="profileFullName" class="text-xl font-bold text-gray-900">Loading...</h2>
+                        <p id="profilePosition" class="text-gray-500">Loading...</p>
+                        <span class="inline-block mt-2 bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">Active Employee</span>
+                    </div>
+
+                    <div class="mt-6 space-y-3">
+                        <div class="flex items-center gap-3 text-gray-600">
+                            <i class="fas fa-id-badge w-5 text-center"></i>
+                            <span id="profileEmployeeId" class="text-sm">Loading...</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-gray-600">
+                            <i class="fas fa-building w-5 text-center"></i>
+                            <span id="profileDepartment" class="text-sm">Loading...</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-gray-600">
+                            <i class="fas fa-calendar w-5 text-center"></i>
+                            <span id="profileHireDate" class="text-sm">Loading...</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-gray-600">
+                            <i class="fas fa-envelope w-5 text-center"></i>
+                            <span id="profileEmail" class="text-sm">Loading...</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-gray-600">
+                            <i class="fas fa-phone w-5 text-center"></i>
+                            <span id="profilePhone" class="text-sm">Loading...</span>
+                        </div>
+                    </div>
+
+                    <button onclick="openEditProfileModal()" class="w-full mt-6 bg-[#003D7A] hover:bg-[#0052A3] text-white py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-edit mr-2"></i> Edit Profile
+                    </button>
+                    <div id="qrNotAvailable" class="mt-6 text-sm text-gray-500 hidden">QR code not available.</div>
+                    <div id="qrPreviewContainer" class="hidden mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-semibold text-gray-800">Employee QR Code</span>
+                            <a id="downloadQrBtn" href="#" download class="inline-flex items-center gap-2 px-3 py-2 bg-[#003D7A] text-white text-xs rounded-lg hover:bg-[#0052A3] transition">
+                                <i class="fas fa-download"></i>
+                                Download QR
+                            </a>
+                        </div>
+                        <div class="flex justify-center">
+                            <img id="profileQrImage" src="/uploads/qrcodes/default-qr.png" alt="Employee QR Code" class="w-40 h-40 object-contain rounded-lg border border-gray-200 bg-white cursor-pointer transition hover:scale-[1.02]" onclick="openQrPreviewModal()" onerror="this.src='/uploads/qrcodes/default-qr.png'">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="qrPreviewModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                        <h4 class="font-semibold text-gray-900">QR Code Preview</h4>
+                        <button onclick="closeQrPreviewModal()" class="text-gray-500 hover:text-gray-800">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="p-4" onclick="event.stopPropagation()">
+                        <img id="qrPreviewModalImage" src="/uploads/qrcodes/default-qr.png" alt="QR Preview" class="w-full h-auto object-contain rounded-xl bg-gray-100">
+                        <p class="text-xs text-gray-500 mt-3 text-center">Click outside or press close to exit preview.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Changes Alert -->
+            <div id="pendingChangesAlert" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-clock text-yellow-600 mt-0.5"></i>
+                    <div>
+                        <h4 class="font-semibold text-yellow-800">Pending Changes</h4>
+                        <p class="text-sm text-yellow-700 mt-1">You have profile changes awaiting HR approval.</p>
+                        <button onclick="viewPendingChanges()" class="text-sm text-yellow-800 font-medium hover:underline mt-2">View Details →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employment Summary -->
+            <div class="bg-white rounded-lg shadow p-6 mt-6">
+                <h3 class="font-bold text-gray-900 mb-4">Employment Summary</h3>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Employment Type</span>
+                        <span id="employmentType" class="font-medium text-gray-900 text-sm">Loading...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Department</span>
+                        <span id="department" class="font-medium text-gray-900 text-sm">Loading...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Work Location</span>
+                        <span id="workLocation" class="font-medium text-gray-900 text-sm">Main Building</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Salary Grade</span>
+                        <span id="employeeGrade" class="font-medium text-gray-900 text-sm">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-span-2 space-y-6">
+            <!-- Personal Information -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Personal Information</h3>
+                    <button onclick="openEditPersonalModal()" class="text-[#003D7A] hover:underline text-sm font-medium">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Full Name</label>
+                        <p id="fullNameDetail" class="font-medium text-gray-900 mt-1">Loading...</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Date of Birth</label>
+                        <p id="dateOfBirthDetail" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Gender</label>
+                        <p id="genderDetail" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Civil Status</label>
+                        <p id="civilStatusDetail" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Blood Type</label>
+                        <p id="bloodTypeDetail" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Nationality</label>
+                        <p id="nationalityDetail" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-500 uppercase font-medium">Address</label>
+                        <p id="addressDetail" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Contact -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Emergency Contact</h3>
+                    <button onclick="openEditEmergencyModal()" class="text-[#003D7A] hover:underline text-sm font-medium">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Contact Name</label>
+                        <p id="emergencyName" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Relationship</label>
+                        <p id="emergencyRelation" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Phone Number</label>
+                        <p id="emergencyPhone" class="font-medium text-gray-900 mt-1">Not provided</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Government IDs -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Government IDs & Benefits</h3>
+                    <button onclick="openEditGovernmentModal()" class="text-[#003D7A] hover:underline text-sm font-medium">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">SSS Number</label>
+                        <p id="sssNumberDetail" class="font-medium text-gray-900 mt-1">33-1234567-8</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">PhilHealth Number</label>
+                        <p id="philhealthNumberDetail" class="font-medium text-gray-900 mt-1">12-345678901-2</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Pag-IBIG Number</label>
+                        <p id="pagibigNumberDetail" class="font-medium text-gray-900 mt-1">1234-5678-9012</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">TIN</label>
+                        <p id="tinDetail" class="font-medium text-gray-900 mt-1">123-456-789-000</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Information -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">Bank Information</h3>
+                    <button onclick="openEditBankModal()" class="text-[#003D7A] hover:underline text-sm font-medium">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Bank Name</label>
+                        <p id="bankNameDetail" class="font-medium text-gray-900 mt-1">BDO Unibank</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Account Number</label>
+                        <p id="accountNumberDetail" class="font-medium text-gray-900 mt-1">•••• •••• •••• 4567</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Account Type</label>
+                        <p id="accountTypeDetail" class="font-medium text-gray-900 mt-1">Savings</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-medium">Branch</label>
+                        <p id="branchDetail" class="font-medium text-gray-900 mt-1">Quezon City Main</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-user-edit mr-2"></i> Edit Profile Photo</h3>
+            <button onclick="closeEditProfileModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+            <div class="text-center">
+                <img id="editProfileAvatar" src="/uploads/profiles/default-avatar.png" alt="Profile Photo" class="w-24 h-24 rounded-full object-cover mx-auto mb-4 border border-gray-200" onerror="this.src='/uploads/profiles/default-avatar.png'">
+                <button type="button" id="chooseProfilePicBtn" class="text-[#003D7A] text-sm font-medium hover:underline"><i class="fas fa-camera mr-1"></i> Change Photo</button>
+                <input id="profilePicFileInput" type="file" accept="image/*" class="hidden" />
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                <input type="tel" value="+63 912 345 6789" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input type="email" value="sarah.johnson@zealhr.com" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p class="text-xs text-yellow-800"><i class="fas fa-info-circle mr-1"></i> Changes will be submitted for HR approval before taking effect.</p>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closeEditProfileModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100">Cancel</button>
+            <button onclick="submitProfileEdit()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]"><i class="fas fa-paper-plane mr-1"></i> Submit for Approval</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Personal Information Modal -->
+<div id="editPersonalModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-user mr-2"></i> Edit Personal Information</h3>
+            <button onclick="closeEditPersonalModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <input type="text" value="Dr. Sarah Marie Johnson" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+                    <input type="date" value="1988-06-15" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option>Male</option>
+                        <option selected>Female</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Civil Status</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option>Single</option>
+                        <option selected>Married</option>
+                        <option>Widowed</option>
+                        <option>Separated</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Nationality</label>
+                    <input type="text" value="Filipino" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Blood Type</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                        <option selected>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                    <textarea rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">123 Healthcare Street, Medical District, Quezon City 1100</textarea>
+                </div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p class="text-xs text-yellow-800"><i class="fas fa-info-circle mr-1"></i> Changes will be submitted for HR approval before taking effect.</p>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closeEditPersonalModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100">Cancel</button>
+            <button onclick="submitPersonalEdit()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]"><i class="fas fa-paper-plane mr-1"></i> Submit for Approval</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Emergency Contact Modal -->
+<div id="editEmergencyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-phone-alt mr-2"></i> Edit Emergency Contact</h3>
+            <button onclick="closeEditEmergencyModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Name</label>
+                    <input type="text" value="Robert Johnson" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Relationship</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option selected>Spouse</option>
+                        <option>Parent</option>
+                        <option>Sibling</option>
+                        <option>Child</option>
+                        <option>Friend</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" value="+63 917 123 4567" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p class="text-xs text-yellow-800"><i class="fas fa-info-circle mr-1"></i> Changes will be submitted for HR approval before taking effect.</p>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closeEditEmergencyModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100">Cancel</button>
+            <button onclick="submitEmergencyEdit()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]"><i class="fas fa-paper-plane mr-1"></i> Submit for Approval</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Government IDs Modal -->
+<div id="editGovernmentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-id-card mr-2"></i> Edit Government IDs</h3>
+            <button onclick="closeEditGovernmentModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">SSS Number</label>
+                    <input type="text" value="33-1234567-8" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">PhilHealth Number</label>
+                    <input type="text" value="12-345678901-2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Pag-IBIG Number</label>
+                    <input type="text" value="1234-5678-9012" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">TIN</label>
+                    <input type="text" value="123-456-789-000" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p class="text-xs text-yellow-800"><i class="fas fa-info-circle mr-1"></i> Changes will be submitted for HR approval. Please ensure all IDs are valid.</p>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closeEditGovernmentModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100">Cancel</button>
+            <button onclick="submitGovernmentEdit()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]"><i class="fas fa-paper-plane mr-1"></i> Submit for Approval</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Bank Information Modal -->
+<div id="editBankModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-university mr-2"></i> Edit Bank Information</h3>
+            <button onclick="closeEditBankModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Bank Name</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option selected>BDO Unibank</option>
+                        <option>BPI</option>
+                        <option>Metrobank</option>
+                        <option>Landbank</option>
+                        <option>UnionBank</option>
+                        <option>Security Bank</option>
+                        <option>PNB</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Account Type</label>
+                    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option selected>Savings</option>
+                        <option>Checking</option>
+                        <option>Payroll</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+                    <input type="text" value="1234567890124567" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Branch</label>
+                    <input type="text" value="Quezon City Main" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-xs text-red-800"><i class="fas fa-exclamation-triangle mr-1"></i> Bank changes require HR verification. Please ensure account details are correct to avoid payroll issues.</p>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closeEditBankModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100">Cancel</button>
+            <button onclick="submitBankEdit()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]"><i class="fas fa-paper-plane mr-1"></i> Submit for Approval</button>
+        </div>
+    </div>
+</div>
+
+<!-- Submission Success Modal -->
+<div id="submitSuccessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full text-center p-8">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check text-green-600 text-3xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h3>
+        <p class="text-gray-600 text-sm mb-6">Your profile changes have been submitted for HR approval. You will be notified once approved.</p>
+        <button onclick="closeSubmitSuccessModal()" class="w-full bg-[#003D7A] text-white py-2.5 rounded-lg font-medium hover:bg-[#0052A3]">Got it</button>
+    </div>
+</div>
+
+<!-- Pending Changes Modal -->
+<div id="pendingChangesModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-clock mr-2"></i> Pending Changes</h3>
+            <button onclick="closePendingChangesModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+            <div id="pendingChangesContent">
+                <!-- Pending changes will be loaded here -->
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Loading pending changes...</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closePendingChangesModal()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]">Close</button>
+        </div>
+    </div>
+</div>
+

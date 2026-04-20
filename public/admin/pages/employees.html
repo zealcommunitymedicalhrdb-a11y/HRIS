@@ -1,0 +1,130 @@
+<!-- Employees Content -->
+<div class="p-4 sm:p-8">
+    <!-- Filters and Search Bar -->
+    <div class="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
+            <!-- Search -->
+            <div class="w-full md:flex-1">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-3 text-gray-400"></i>
+                    <input type="text" id="employeeSearch" oninput="loadEmployees(1)" placeholder="Search by name, email, or ID..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
+                <!-- Department Filter -->
+                <select id="roleFilter" onchange="loadEmployees(1)" class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    <option value="">All Departments</option>
+                    <option value="HR">HR Administration</option>
+                    <option value="doctor">Doctor</option>
+                    <option value="nurse">Nurse</option>
+                    <option value="guard">Guard</option>
+                    <option value="staff">Staff</option>
+                </select>
+
+                <!-- Status Filter -->
+                <select id="statusFilter" onchange="loadEmployees(1)" class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    <option>All Status</option>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                    <option>On Leave</option>
+                    <option>Contract Ending</option>
+                </select>
+
+                <!-- Export Button with Dropdown -->
+                <div class="relative w-full sm:w-auto">
+                    <button onclick="toggleExportDropdown()" class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 transition">
+                        <i class="fas fa-download"></i>
+                        Export
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    <!-- Export Dropdown -->
+                    <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <button onclick="exportToExcel()" class="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 rounded-t-lg transition">
+                            <i class="fas fa-file-excel text-green-600"></i>
+                            Export to Excel
+                        </button>
+                        <button onclick="exportToPDF()" class="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 rounded-b-lg transition border-t border-gray-100">
+                            <i class="fas fa-file-pdf text-red-600"></i>
+                            Export to PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employees Table -->
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <table class="w-full min-w-[800px]">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">EMPLOYEE</th>
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">CONTACT</th>
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">DEPARTMENT</th>
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">POSITION</th>
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">STATUS</th>
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">HIRE DATE</th>
+                    <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody id="employeeTableBody">
+    <!-- Employees will load here -->
+</tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 border-t border-gray-200">
+    <p id="paginationInfo" class="text-sm text-gray-600">Showing 0 to 0 of 0 employees</p>
+    <div id="paginationControls" class="flex items-center gap-2">
+        </div>
+</div>
+    </div>
+</div>
+
+<!-- Floating Add Employee Button -->
+<button onclick="openAddEmployeeModal()" 
+        class="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-14 h-14 bg-[#003D7A] hover:bg-[#0052A3] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group"
+        title="Add Employee">
+    <i class="fas fa-plus text-xl group-hover:rotate-90 transition-transform duration-300"></i>
+</button>
+
+<!-- ✅ MODAL CONTAINER - Where the modal will be loaded -->
+<div id="modalContainer"></div>
+
+<!-- Export Progress Modal -->
+<div id="exportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div class="text-center">
+            <div id="exportIcon" class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-spinner fa-spin text-blue-600 text-2xl"></i>
+            </div>
+            <h3 id="exportTitle" class="text-lg font-bold text-gray-900 mb-2">Exporting Data...</h3>
+            <p id="exportMessage" class="text-gray-600 text-sm mb-4">Please wait while we prepare your file.</p>
+            <div id="exportProgress" class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div id="exportProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <button id="exportCloseBtn" onclick="closeExportModal()" class="hidden px-6 py-2.5 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3] transition">
+                Download File
+            </button>
+        </div>
+    </div>
+</div>
+<input type="hidden" id="employeeID" name="employeeID">
+<input type="hidden" id="role" name="role">
+
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-[60] transition-opacity duration-300">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-4 sm:p-6 text-center">
+    <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i class="fas fa-exclamation-triangle text-2xl"></i>
+    </div>
+    <h3 class="text-xl font-bold text-gray-800 mb-2">Delete Employee?</h3>
+    <p class="text-gray-500 mb-6">This action cannot be undone. Are you sure you want to remove this record?</p>
+    
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <button onclick="closeDeleteModal()" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium">Cancel</button>
+      <button id="confirmDeleteBtn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Delete</button>
+    </div>
+  </div>
+</div>

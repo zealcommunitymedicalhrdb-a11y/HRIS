@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance System | Live Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        .scan-line {
+            height: 2px;
+            background: #60a5fa;
+            box-shadow: 0 0 15px #60a5fa;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            animation: scanMove 2s linear infinite;
+        }
+        @keyframes scanMove { 0% { top: 0%; } 100% { top: 100%; } }
+        .modal-active { transform: scale(1) !important; opacity: 1 !important; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body id="main-body" class="bg-[#0f172a] text-white font-sans min-h-screen overflow-hidden flex flex-col">
+    
+    <header class="p-6 flex items-center justify-between border-b border-slate-800 bg-[#0f172a]/80 backdrop-blur-md">
+        <div class="flex items-center gap-4">
+            <div class="bg-blue-800 p-2 rounded-xl shadow-lg shadow-blue-900/40">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white">ATTENDANCE SYSTEM</h1>
+                <div class="flex items-center gap-2 text-slate-400">
+                    <span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span class="text-[10px] uppercase tracking-widest font-bold text-white">Live Portal</span>
+                </div>
+            </div>
+        </div>
+        <div id="live-clock" class="text-xl font-mono font-bold text-blue-400">00:00:00</div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden">
+        
+        <div class="lg:col-span-4 flex flex-col items-center justify-center space-y-6">
+            <div class="relative w-full max-w-sm">
+                <div id="reader" class="rounded-[2.5rem] overflow-hidden border-[6px] border-[#003D7A]/30 bg-black shadow-2xl"></div>
+                <div class="scan-line pointer-events-none"></div>
+            </div>
+            <div class="text-center">
+                <p class="text-slate-400 text-sm italic">Align QR Code within the frame</p>
+                <p class="text-blue-500 text-xs font-bold mt-2 uppercase tracking-widest">Automatic Verification Active</p>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 flex flex-col bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-extrabold text-gray-900 uppercase tracking-tight">Recent Check-ins</h3>
+                <span class="px-3 py-1 bg-blue-50 text-[#003D7A] text-xs font-bold rounded-full">TODAY</span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-gray-50 z-10">
+                        <tr>
+                            <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Staff Member</th>
+                            <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">In</th>
+                            <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Out</th>
+                            <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                            <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody" class="divide-y divide-gray-100 text-gray-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="success-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md px-6 translate-y-full transition-transform duration-500 ease-in-out">
+        <div class="bg-white rounded-[2rem] w-full max-w-xs overflow-hidden shadow-2xl transform transition-all scale-90 opacity-0 duration-300" id="modal-card">
+            <div id="modal-header-bg" class="bg-blue-800 p-6 text-center text-white relative">
+                <div class="w-24 h-24 rounded-full border-4 border-white object-cover mx-auto shadow-xl bg-slate-200 overflow-hidden">
+                    <img id="modal-pic" src="" class="w-full h-full object-cover">
+                </div>
+                <h2 id="modal-name" class="text-xl font-bold mt-8 mb-1 leading-tight">--</h2>
+                <p id="modal-role" class="text-blue-200 text-xs font-bold uppercase tracking-widest">--</p>
+            </div>
+            <div class="p-6 text-center">
+                <p id="modal-action-type" class="text-blue-600 font-black text-2xl uppercase italic tracking-tighter">VERIFIED</p>
+                <p id="modal-time" class="text-slate-400 text-sm font-medium mt-1">--:-- --</p>
+                <div class="w-full bg-slate-100 h-1.5 mt-6 rounded-full overflow-hidden">
+                    <div id="modal-progress" class="h-full bg-blue-800 w-full origin-left"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="beepAudio" src="https://assets.mixkit.co/active_storage/sfx/766/766-preview.mp3"></audio>
+
+    <script>
+        const tableBody = document.getElementById('attendanceTableBody');
+        const channel = new BroadcastChannel('qr_scanner_channel');
+        const beep = document.getElementById('beepAudio');
+        let isPaused = false;
+        let attendanceRecords = []; // Store current records locally
+
+        setInterval(() => {
+            document.getElementById('live-clock').textContent = new Date().toLocaleTimeString();
+        }, 1000);
+
+        const API_URL = '/api/attendance'; 
+        
+        const loadFromDB = async () => {
+            try {
+                const response = await fetch(API_URL);
+                attendanceRecords = await response.json();
+                tableBody.innerHTML = ''; 
+                attendanceRecords.forEach(record => renderRow(record));
+            } catch (err) { console.error("Sync Error:", err); }
+        };
+
+        const getStatusClasses = (status) => {
+            if (status === 'On-Time' || status === 'Completed') return 'bg-green-100 text-green-700';
+            if (status === 'Late') return 'bg-orange-100 text-orange-700';
+            return 'bg-blue-100 text-blue-700';
+        };
+
+        const formatCurrentTime = () => {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        };
+
+        const calculateDurationString = (checkIn, checkOut) => {
+            if (!checkIn || !checkOut) return '0h 0m';
+
+            const parseTime = (time) => {
+                const [clock, period] = time.split(' ');
+                if (!clock || !period) return null;
+                let [hours, minutes] = clock.split(':').map(Number);
+                if (period.toUpperCase() === 'PM' && hours < 12) hours += 12;
+                if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+                return hours * 60 + minutes;
+            };
+
+            const start = parseTime(checkIn);
+            const end = parseTime(checkOut);
+            if (start === null || end === null) return '0h 0m';
+
+            let diff = end - start;
+            if (diff < 0) diff += 24 * 60;
+            const hours = Math.floor(diff / 60);
+            const minutes = diff % 60;
+            return `${hours}h ${minutes}m`;
+        };
+
+        const saveAttendanceUpdate = async (empId, payload) => {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ empId, ...payload })
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Save Attendance Error:', err);
+                return null;
+            }
+        };
+
+        const renderRow = (data) => {
+            const tr = document.createElement('tr');
+            tr.id = `row-${data.empId}`;
+            tr.className = "hover:bg-gray-50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-6 py-4">
+                    <p class="font-bold text-gray-900">${data.name}</p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase">${data.role}</p>
+                </td>
+                <td class="px-6 py-4 text-sm font-semibold text-gray-900">${data.checkIn}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">${data.checkOut || '--:--'}</td>
+                <td class="px-6 py-4">
+                    <span class="${getStatusClasses(data.status)} text-[10px] font-black px-2.5 py-1 rounded-md uppercase">
+                        ${data.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm font-mono text-gray-500">${data.duration || '0h'}</td>
+            `;
+            tableBody.prepend(tr);
+        };
+
+        async function onScanSuccess(decodedText) {
+            if (isPaused) return;
+            isPaused = true;
+            const empId = decodedText.trim();
+
+            // Check existing status from local record cache
+            const existing = attendanceRecords.find(r => String(r.empId) === empId);
+            let actionType = "Check-In";
+            let alreadyFinished = false;
+
+            if (existing) {
+                if (existing.checkOut && existing.checkOut !== '--:-- --') {
+                    alreadyFinished = true;
+                } else {
+                    actionType = "Check-Out";
+                }
+            }
+
+            try {
+                const response = await fetch(`/api/employees/list?search=${empId}&limit=1`);
+                const data = await response.json();
+                const employee = data.employees.find(e => e.employeeId === empId);
+
+                if (!employee) {
+                    alert("ID Not Recognized");
+                    isPaused = false;
+                    return;
+                }
+
+                beep.play().catch(() => {});
+
+                if (alreadyFinished) {
+                    showModal(employee, "COMPLETED", "Already Checked Out Today", "bg-red-600");
+                    setTimeout(() => isPaused = false, 3500);
+                    return;
+                }
+
+                const now = formatCurrentTime();
+                let payload = {
+                    name: employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
+                    role: employee.position || employee.role || 'Employee',
+                    date: new Date().toISOString().split('T')[0]
+                };
+
+                if (actionType === 'Check-In') {
+                    payload.checkIn = now;
+                    payload.checkOut = '';
+                    payload.status = now > '09:00 AM' ? 'Late' : 'On-Time';
+                    payload.duration = '0h 0m';
+                } else {
+                    const checkIn = existing.checkIn || '';
+                    payload.checkIn = checkIn;
+                    payload.checkOut = now;
+                    payload.duration = calculateDurationString(checkIn, now);
+                    payload.status = 'Completed';
+                }
+
+                const saveResult = await saveAttendanceUpdate(empId, payload);
+                if (saveResult && saveResult.empId) {
+                    showModal(employee, actionType, `Verified at ${now}`);
+                    channel.postMessage(empId);
+                    setTimeout(loadFromDB, 1000);
+                } else {
+                    console.error('Failed to save attendance:', saveResult);
+                    alert('Unable to save attendance. Please try again.');
+                    isPaused = false;
+                }
+            } catch (err) {
+                console.error('Scanner Error:', err);
+                isPaused = false;
+            }
+        }
+
+        function showModal(emp, action, timeLabel, headerColor = null) {
+            const modal = document.getElementById('success-modal');
+            const card = document.getElementById('modal-card');
+            const progress = document.getElementById('modal-progress');
+            const header = document.getElementById('modal-header-bg');
+            const actionText = document.getElementById('modal-action-type');
+
+            // Set dynamic text
+            document.getElementById('modal-name').textContent = emp.fullName;
+            document.getElementById('modal-role').textContent = emp.position || emp.role;
+            document.getElementById('modal-pic').src = emp.profilePic;
+            document.getElementById('modal-time').textContent = timeLabel;
+            actionText.textContent = action;
+
+            // Adjust colors based on action
+            header.className = "p-6 text-center text-white relative transition-colors duration-300 " + 
+                              (headerColor || (action === "Check-Out" ? "bg-orange-600" : "bg-blue-800"));
+            
+            actionText.className = "font-black text-2xl uppercase italic tracking-tighter transition-colors duration-300 " + 
+                                  (action === "COMPLETED" ? "text-red-600" : (action === "Check-Out" ? "text-orange-600" : "text-blue-600"));
+
+            // Animate In
+            modal.classList.remove('translate-y-full');
+            setTimeout(() => card.classList.add('modal-active'), 100);
+
+            // Progress Bar
+            progress.style.transition = 'none';
+            progress.style.transform = 'scaleX(1)';
+            setTimeout(() => {
+                progress.style.transition = 'transform 3s linear';
+                progress.style.transform = 'scaleX(0)';
+            }, 50);
+
+            setTimeout(() => {
+                card.classList.remove('modal-active');
+                modal.classList.add('translate-y-full');
+                setTimeout(() => isPaused = false, 500);
+            }, 3000);
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
+        
+        loadFromDB();
+    </script>
+</body>
+</html>
+
+
+
+
+
+

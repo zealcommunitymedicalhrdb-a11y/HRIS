@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeal Community - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        .modal-animate { animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color: #ef4444 !important; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        @keyframes pulse-bg {
+            0%, 100% { background-color: rgba(229, 231, 235, 1); }
+            50% { background-color: rgba(209, 213, 219, 0.6); }
+        }
+        .skeleton-loading { animation: pulse-bg 1s infinite; border-color: transparent !important; }
+        .skeleton-loading i, .skeleton-loading p { visibility: hidden; }
+
+        @keyframes scan { 0%, 100% { top: 32px; } 50% { top: calc(100% - 32px); } }
+        .animate-scan { animation: scan 2s ease-in-out infinite; position: absolute; }
+        
+        #scannerView video { border-radius: 1rem; object-fit: cover !important; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 flex items-center justify-center p-4 overflow-auto">
+    
+    <div class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 bg-white rounded-2xl shadow-2xl">
+        <div class="bg-gradient-to-br from-[#003D7A] to-[#0052A3] p-8 flex flex-col justify-center items-center hidden lg:flex relative">
+            <div class="text-center">
+                <div class="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
+                    <img src="../images/logo.jpg" alt="Logo" class="h-24 w-28 object-contain">
+                </div>
+                <h1 class="text-white text-2xl font-bold mb-1">Zeal Community</h1>
+                <p class="text-blue-200 text-base">Human Resource Information System</p>
+            </div>
+            <p class="text-blue-200 text-xs absolute bottom-4">© 2026 Zeal Community Healthcare Solutions</p>
+        </div>
+
+        <div class="p-6 lg:p-8 flex flex-col justify-center">
+            <div class="mb-4">
+                <h2 class="text-xl font-bold text-gray-900 mb-1">Sign In</h2>
+                <p class="text-gray-600 text-sm">Enter your credentials to access the system</p>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Employee ID or Email</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="fas fa-user text-sm"></i>
+                        </span>
+                        <input type="text" id="identifier" placeholder="e.g. DOC-8277 or you@example.com" required
+                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A] transition text-sm">
+                        <span id="idVerified" class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 hidden">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-lock text-sm"></i></span>
+                        <input type="password" id="password" placeholder="Enter password" required
+                            class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A] transition text-sm">
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-eye text-sm" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div hidden>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Login Mode</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <label class="flex-1 cursor-not-allowed">
+                            <input type="radio" name="role" value="employee" id="roleEmployee" class="hidden peer" checked disabled>
+                            <div id="staffBtn" class="border-2 border-gray-300 peer-checked:border-[#003D7A] peer-checked:bg-blue-50 rounded-lg p-2 text-center transition opacity-60 cursor-not-allowed">
+                                <i class="fas fa-user text-gray-600"></i>
+                                <p class="text-xs font-medium">Employee</p>
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-not-allowed">
+                            <input type="radio" name="role" value="hr" id="roleHR" class="hidden peer" disabled>
+                            <div id="adminBtn" class="border-2 border-gray-300 peer-checked:border-[#003D7A] peer-checked:bg-blue-50 rounded-lg p-2 text-center transition opacity-60 cursor-not-allowed">
+                                <i class="fas fa-user-shield text-gray-600"></i>
+                                <p class="text-xs font-medium">HR ADMIN</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" id="loginBtn" class="w-full bg-[#003D7A] hover:bg-[#0052A3] text-white py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+
+                <div class="text-right">
+                    <button type="button" onclick="openForgotPasswordModal()" class="text-sm font-medium text-[#003D7A] hover:text-[#0052A3] transition">Forgot Password?</button>
+                </div>
+
+                <div class="flex items-center gap-3 py-1" >
+                    <div class="flex-1 h-px bg-gray-300"></div>
+                    <span class="text-gray-500 text-xs font-medium">OR</span>
+                    <div class="flex-1 h-px bg-gray-300"></div>
+                </div>
+
+                <button type="button" onclick="openQRScanner()" class="w-full border-2 border-gray-300 hover:border-[#003D7A] text-gray-700 py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fas fa-qrcode"></i> Sign In with QR Code
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="qrScannerModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate">
+            <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-4 flex items-center justify-between text-white">
+                <h3 class="font-bold flex items-center gap-2"><i class="fas fa-qrcode"></i> Scan Employee QR</h3>
+                <button onclick="closeQRScanner()"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6">
+                <div id="scannerView" class="bg-gray-900 rounded-xl aspect-square flex items-center justify-center relative overflow-hidden">
+                    <div id="scannerPlaceholder" class="text-center">
+                        <i class="fas fa-camera text-gray-600 text-5xl mb-3"></i>
+                        <p class="text-gray-400 text-sm font-medium">Camera access required</p>
+                    </div>
+                    <div class="absolute inset-0 pointer-events-none" id="scannerOverlay" style="display: none; z-index: 10;">
+                        <div class="absolute top-8 left-8 w-12 h-12 border-l-4 border-t-4 border-[#00D4FF]"></div>
+                        <div class="absolute top-8 right-8 w-12 h-12 border-r-4 border-t-4 border-[#00D4FF]"></div>
+                        <div class="absolute bottom-8 left-8 w-12 h-12 border-l-4 border-b-4 border-[#00D4FF]"></div>
+                        <div class="absolute bottom-8 right-8 w-12 h-12 border-r-4 border-b-4 border-[#00D4FF]"></div>
+                        <div class="absolute left-8 right-8 h-0.5 bg-[#00D4FF] animate-scan shadow-[0_0_15px_#00D4FF]"></div>
+                    </div>
+                </div>
+                <div id="scannerStatus" class="mt-4 text-center text-sm font-medium text-gray-600">Align QR code within the frame</div>
+                <div class="mt-4 flex gap-3">
+                    <button id="startScanBtn" onclick="startScanner()" class="flex-1 bg-[#003D7A] text-white py-2.5 rounded-lg font-bold hover:bg-[#0052A3] transition">Start Camera</button>
+                    <button id="stopScanBtn" onclick="stopScanner()" class="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hidden">Stop Camera</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div id="forgotPasswordModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate">
+        <div class="bg-[#003D7A] p-4 text-white flex items-center justify-between">
+            <h3 class="font-bold flex items-center gap-2"><i class="fas fa-envelope-open-text"></i> Reset Password</h3>
+            <button onclick="closeForgotPasswordModal()"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <form id="forgotPasswordForm" class="p-6 space-y-4">
+            <p class="text-sm text-gray-600">Enter the email address registered to your account and we will send a 6-digit reset code.</p>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                <input type="email" id="forgotEmail" required placeholder="you@example.com"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] outline-none transition-all">
+            </div>
+            <button type="submit" id="forgotSendBtn" class="w-full bg-[#003D7A] text-white py-2.5 rounded-lg font-bold hover:bg-[#0052A3] transition">Send Reset Code</button>
+        </form>
+    </div>
+</div>
+
+<div id="resetPasswordModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate">
+        <div class="bg-[#003D7A] p-4 text-white flex items-center justify-between">
+            <h3 class="font-bold flex items-center gap-2"><i class="fas fa-lock-open"></i> Verify Code</h3>
+            <button onclick="closeResetPasswordModal()"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <form id="resetPasswordForm" class="p-6 space-y-4">
+            <p class="text-sm text-gray-600">Enter the 6-digit code we emailed you, then choose a new password.</p>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Verification Code</label>
+                <input type="text" id="resetCode" required maxlength="6" placeholder="123456"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] outline-none transition-all">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
+                <input type="password" id="resetNewPassword" required minlength="6" placeholder="New password"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] outline-none transition-all">
+                <div class="mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div id="resetStrengthBar" class="h-full w-0 transition-all duration-300 bg-red-500"></div>
+                </div>
+                <p id="resetStrengthText" class="text-[10px] mt-1 font-medium text-gray-500 text-right uppercase tracking-wider">Too Weak</p>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                <input type="password" id="resetConfirmPassword" required minlength="6" placeholder="Confirm new password"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] outline-none transition-all">
+            </div>
+            <button type="submit" id="resetPasswordBtn" class="w-full bg-[#003D7A] text-white py-2.5 rounded-lg font-bold hover:bg-[#0052A3] transition">Reset Password</button>
+        </form>
+    </div>
+</div>
+
+<div id="firstLoginModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate">
+        <div class="bg-[#003D7A] p-4 text-white">
+            <h3 class="font-bold flex items-center gap-2"><i class="fas fa-shield-alt"></i> Security Update</h3>
+            <p class="text-xs text-blue-100">Please create a strong password for your account.</p>
+        </div>
+        <form id="updatePasswordForm" class="p-6 space-y-4">
+            <input type="hidden" id="resetEmployeeId">
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
+                <input type="password" id="newPassword" required minlength="6"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] outline-none transition-all">
+                
+                <div class="mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div id="strengthBar" class="h-full w-0 transition-all duration-300 bg-red-500"></div>
+                </div>
+                <p id="strengthText" class="text-[10px] mt-1 font-medium text-gray-500 text-right uppercase tracking-wider">Too Weak</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                <input type="password" id="confirmPassword" required minlength="6"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] outline-none">
+            </div>
+
+            <button type="submit" id="updateBtn" class="w-full bg-[#003D7A] text-white py-2.5 rounded-lg font-bold hover:bg-[#0052A3] transition disabled:opacity-50 disabled:cursor-not-allowed">
+                Update & Sign In
+            </button>
+        </form>
+    </div>
+</div>
+
+
+    <script>
+        const employeeIdInput = document.getElementById('employeeId');
+const roleEmployee = document.getElementById('roleEmployee');
+const roleHR = document.getElementById('roleHR');
+const verifiedIcon = document.getElementById('idVerified');
+const staffBtn = document.getElementById('staffBtn');
+const adminBtn = document.getElementById('adminBtn');
+
+// New elements for login method
+const identifierInput = document.getElementById('identifier');
+
+// --- UI SOUND SYSTEM ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playFeedbackSound(type) {
+    try {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        if (type === 'success') {
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        } else {
+            oscillator.frequency.setValueAtTime(110, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+        }
+        oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.2);
+    } catch(e) { console.log("Audio play blocked"); }
+}
+
+// --- HELPER: Redirection Logic ---
+function handleRedirection(role) {
+    // Standardizing roles for redirection
+    const adminRoles = ['admin', 'hr'];
+    if (adminRoles.includes(role.toLowerCase())) {
+        window.location.href = '/admin/index.html';
+    } else {
+        window.location.href = '/employee/index.html';
+    }
+}
+
+// --- IDENTITY VERIFICATION (Manual Input) ---
+let typingTimer;
+identifierInput.addEventListener('input', function(e) {
+    const val = e.target.value.trim();
+    identifierInput.classList.remove('shake');
+    verifiedIcon.classList.add('hidden');
+    
+    // Check if it looks like an email
+    const isEmail = val.includes('@');
+    
+    if (isEmail) {
+        // For email, verify if it exists
+        if (val.length < 5) return; // Minimum email length
+        
+        staffBtn.classList.add('skeleton-loading');
+        adminBtn.classList.add('skeleton-loading');
+        
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/verify-email?email=${encodeURIComponent(val)}`);
+                const user = await response.json();
+                staffBtn.classList.remove('skeleton-loading');
+                adminBtn.classList.remove('skeleton-loading');
+
+                if (user.exists) {
+                    verifiedIcon.classList.remove('hidden');
+                    playFeedbackSound('success');
+                    // Auto-select role based on user role
+                    if (user.role === 'admin' || user.role === 'hr') {
+                        roleHR.checked = true;
+                    } else {
+                        roleEmployee.checked = true;
+                    }
+                } else {
+                    triggerErrorState();
+                }
+            } catch (err) {
+                staffBtn.classList.remove('skeleton-loading');
+                adminBtn.classList.remove('skeleton-loading');
+            }
+        }, 600);
+        return;
+    }
+    
+    // For employee ID, do verification
+    const upperVal = val.toUpperCase();
+    
+    // Auto-detect role based on ID prefix
+    const isAdminId = upperVal.startsWith('ADM');
+    
+    // Auto-select role based on ID prefix
+    if (isAdminId) {
+        roleHR.checked = true;
+    } else {
+        roleEmployee.checked = true;
+    }
+    
+    if (upperVal.length < 4) return;
+
+    staffBtn.classList.add('skeleton-loading');
+    adminBtn.classList.add('skeleton-loading');
+    
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/verify-id?employeeId=${upperVal}`);
+            const user = await response.json();
+            staffBtn.classList.remove('skeleton-loading');
+            adminBtn.classList.remove('skeleton-loading');
+
+            if (user.exists) {
+                verifiedIcon.classList.remove('hidden');
+                playFeedbackSound('success');
+                // Role is already set by ID prefix, no need to override
+            } else {
+                triggerErrorState();
+            }
+        } catch (err) {
+            staffBtn.classList.remove('skeleton-loading');
+            adminBtn.classList.remove('skeleton-loading');
+        }
+    }, 600);
+});
+
+function triggerErrorState() {
+    identifierInput.classList.add('shake');
+    playFeedbackSound('error');
+}
+
+// --- QR SCANNER LOGIC ---
+let html5QrCode;
+let isProcessing = false;
+
+function openQRScanner() { document.getElementById('qrScannerModal').classList.remove('hidden'); }
+function closeQRScanner() { stopScanner(); document.getElementById('qrScannerModal').classList.add('hidden'); }
+
+async function startScanner() {
+    isProcessing = false;
+    const status = document.getElementById('scannerStatus');
+    if (html5QrCode) { try { await html5QrCode.clear(); } catch(e) {} }
+    
+    html5QrCode = new Html5Qrcode("scannerView");
+    const config = { fps: 20, qrbox: { width: 250, height: 250 } };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            async (decodedText) => {
+                if (isProcessing) return;
+                isProcessing = true;
+                playFeedbackSound('success');
+                status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying...';
+                
+                try {
+                    await html5QrCode.stop();
+                    document.getElementById('scannerOverlay').style.display = 'none';
+                } catch (e) {}
+                
+                handleQrAuthResponse(decodedText.trim());
+            }
+        );
+        document.getElementById('scannerPlaceholder').classList.add('hidden');
+        document.getElementById('scannerOverlay').style.display = 'block';
+        document.getElementById('startScanBtn').classList.add('hidden');
+        document.getElementById('stopScanBtn').classList.remove('hidden');
+    } catch (err) {
+        if (err.name !== "Html5QrcodeError") alert("Camera error: " + err);
+    }
+}
+
+function stopScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+            document.getElementById('scannerPlaceholder').classList.remove('hidden');
+            document.getElementById('scannerOverlay').style.display = 'none';
+            document.getElementById('startScanBtn').classList.remove('hidden');
+            document.getElementById('stopScanBtn').classList.add('hidden');
+        });
+    }
+}
+
+// --- SHARED AUTHENTICATION HANDLER ---
+function parseQrPayload(payload) {
+    if (!payload || typeof payload !== 'string') return null;
+    let cleaned = payload.trim();
+
+    try {
+        const parsed = JSON.parse(cleaned);
+        if (parsed && typeof parsed === 'object' && parsed.employeeId) {
+            return String(parsed.employeeId).trim();
+        }
+        if (typeof parsed === 'string') {
+            cleaned = parsed.trim();
+        }
+    } catch (err) {
+        // Not JSON, continue with raw string
+    }
+
+    const match = cleaned.match(/[A-Z]+-\d{4}-\d+/);
+    return match ? match[0] : cleaned;
+}
+
+async function handleQrAuthResponse(qrPayload) {
+    const btn = document.getElementById('loginBtn');
+    const qrStatus = document.getElementById('scannerStatus');
+    const employeeId = parseQrPayload(qrPayload);
+
+    if (!employeeId) {
+        alert('Invalid QR code content.');
+        isProcessing = false;
+        return;
+    }
+
+    try {
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Authenticating...';
+        btn.disabled = true;
+
+        const response = await fetch('/api/login-qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ qrData: employeeId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            if (data.user) {
+                localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+                localStorage.setItem('employeeId', employeeId.toUpperCase());
+            }
+
+            if (data.isFirstLogin === true) {
+                document.getElementById('resetEmployeeId').value = employeeId.toUpperCase();
+                document.getElementById('qrScannerModal').classList.add('hidden');
+                document.getElementById('firstLoginModal').classList.remove('hidden');
+            } else {
+                handleRedirection(data.role);
+            }
+        } else {
+            isProcessing = false;
+            alert(data.message || 'QR login failed.');
+            triggerErrorState();
+        }
+    } catch (err) {
+        isProcessing = false;
+        console.error('QR Auth Error:', err);
+        alert('QR login failed. Check browser console for more details.');
+    } finally {
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+        btn.disabled = false;
+    }
+}
+
+async function handleAuthResponse(identifier, pwd) {
+    const btn = document.getElementById('loginBtn');
+    const qrStatus = document.getElementById('scannerStatus');
+    
+    try {
+        console.log("Attempting login for:", identifier); // LOG: Start attempt
+
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: identifier.trim(), password: pwd })
+        });
+
+        const data = await response.json();
+        console.log("Server Response:", data); // LOG: See what the backend sent back
+
+        if (data.success) {
+            // --- ADDITION: Save logged-in user and update header ---
+            if (data.user) {
+                console.log("User data found, updating UI:", data.user); // LOG: Confirm user object exists
+                localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+                localStorage.setItem('employeeId', data.user.employeeId);
+                
+                // Safety check: only call if the function exists on this page
+                if (typeof updateHeaderUser === "function") {
+                    updateHeaderUser(data.user);
+                } else {
+                    console.warn("updateHeaderUser function not found on this page.");
+                }
+            }
+            // --- END ADDITION ---
+
+            if (data.isFirstLogin === true) {
+                console.log("First login detected. Showing modal.");
+                document.getElementById('resetEmployeeId').value = data.user.employeeId;
+                document.getElementById('qrScannerModal').classList.add('hidden'); 
+                document.getElementById('firstLoginModal').classList.remove('hidden');
+            } else {
+                console.log("Redirecting to role dashboard...");
+                handleRedirection(data.role);
+            }
+        } else {
+            isProcessing = false;
+            console.error("Login rejected by server:", data.message); // LOG: Failed credentials
+            alert(data.message);
+            triggerErrorState();
+        }
+    } catch (err) {
+        isProcessing = false;
+        // LOG: This prints the specific JS error causing the "Check server connection" alert
+        console.error("Critical Auth Error:", {
+            message: err.message,
+            stack: err.stack
+        }); 
+        alert("Authentication failed. Check browser console (F12) for details.");
+    } finally {
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+        btn.disabled = false;
+    }
+}
+
+
+// --- FORM SUBMISSIONS ---
+
+// 1. Manual Login Form
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Authenticating...';
+    btn.disabled = true;
+
+    const identifier = identifierInput.value.trim();
+    const password = document.getElementById('password').value;
+
+    handleAuthResponse(identifier, password);
+});
+
+// 2. Password Update Form (First Login)
+document.getElementById('updatePasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const employeeId = document.getElementById('resetEmployeeId').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirmPass = document.getElementById('confirmPassword').value;
+    const updateBtn = document.getElementById('updateBtn');
+
+    if (newPass !== confirmPass) {
+        alert("Passwords do not match!");
+        return;
+    }
+
+    updateBtn.disabled = true;
+    updateBtn.innerText = "Securing Account...";
+
+    try {
+        const response = await fetch('/api/update-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employeeId, newPassword: newPass })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert("Password updated! Please log in with your new password.");
+            window.location.reload(); 
+        } else {
+            alert(result.message);
+            updateBtn.disabled = false;
+        }
+    } catch (err) {
+        alert("Update failed.");
+        updateBtn.disabled = false;
+    }
+});
+
+function togglePassword() {
+    const input = document.getElementById('password');
+    const icon = document.getElementById('toggleIcon');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    icon.classList.toggle('fa-eye'); icon.classList.toggle('fa-eye-slash');
+}
+
+function updatePasswordStrength(value, barElement, textElement, buttonElement) {
+    let strength = 0;
+    if (value.length >= 8) strength++;
+    if (/[A-Z]/.test(value)) strength++;
+    if (/[0-9]/.test(value)) strength++;
+    if (/[^A-Za-z0-9]/.test(value)) strength++;
+
+    switch (strength) {
+        case 0:
+        case 1:
+            barElement.style.width = '25%';
+            barElement.className = 'h-full transition-all duration-300 bg-red-500';
+            textElement.innerText = 'Weak';
+            buttonElement.disabled = true;
+            break;
+        case 2:
+            barElement.style.width = '50%';
+            barElement.className = 'h-full transition-all duration-300 bg-yellow-500';
+            textElement.innerText = 'Medium';
+            buttonElement.disabled = false;
+            break;
+        case 3:
+            barElement.style.width = '75%';
+            barElement.className = 'h-full transition-all duration-300 bg-blue-500';
+            textElement.innerText = 'Strong';
+            buttonElement.disabled = false;
+            break;
+        case 4:
+            barElement.style.width = '100%';
+            barElement.className = 'h-full transition-all duration-300 bg-green-500';
+            textElement.innerText = 'Very Strong';
+            buttonElement.disabled = false;
+            break;
+    }
+
+    if (value.length === 0) {
+        barElement.style.width = '0%';
+        textElement.innerText = '';
+    }
+}
+
+const forgotEmailInput = document.getElementById('forgotEmail');
+const resetCodeInput = document.getElementById('resetCode');
+const resetNewPasswordInput = document.getElementById('resetNewPassword');
+const resetConfirmPasswordInput = document.getElementById('resetConfirmPassword');
+const resetStrengthBar = document.getElementById('resetStrengthBar');
+const resetStrengthText = document.getElementById('resetStrengthText');
+const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+let forgotResetEmail = '';
+
+function openForgotPasswordModal() {
+    document.getElementById('forgotPasswordModal').classList.remove('hidden');
+}
+function closeForgotPasswordModal() {
+    document.getElementById('forgotPasswordModal').classList.add('hidden');
+}
+function openResetPasswordModal() {
+    document.getElementById('resetPasswordModal').classList.remove('hidden');
+}
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').classList.add('hidden');
+}
+
+document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = forgotEmailInput.value.trim();
+    if (!email) {
+        alert('Please enter your email.');
+        return;
+    }
+
+    const btn = document.getElementById('forgotSendBtn');
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/api/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            forgotResetEmail = email;
+            closeForgotPasswordModal();
+            openResetPasswordModal();
+            alert('A 6-digit reset code has been sent to your email.');
+        } else {
+            alert(result.message || 'Unable to find that email.');
+        }
+    } catch (err) {
+        console.error('Forgot password request failed:', err);
+        alert('Unable to send reset code.');
+    } finally {
+        btn.innerHTML = 'Send Reset Code';
+        btn.disabled = false;
+    }
+});
+
+document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = resetCodeInput.value.trim();
+    const newPass = resetNewPasswordInput.value;
+    const confirmPass = resetConfirmPasswordInput.value;
+
+    if (!code) {
+        alert('Please enter the verification code.');
+        return;
+    }
+    if (newPass !== confirmPass) {
+        alert('Passwords do not match!');
+        return;
+    }
+
+    resetPasswordBtn.disabled = true;
+    resetPasswordBtn.innerText = 'Resetting...';
+
+    try {
+        const response = await fetch('/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: forgotResetEmail, code, newPassword: newPass })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Your password was reset successfully. Please login with the new password.');
+            closeResetPasswordModal();
+            window.location.reload();
+        } else {
+            alert(result.message || 'Unable to reset password.');
+            resetPasswordBtn.disabled = false;
+        }
+    } catch (err) {
+        console.error('Reset password request failed:', err);
+        alert('Unable to reset password.');
+        resetPasswordBtn.disabled = false;
+    } finally {
+        resetPasswordBtn.innerText = 'Reset Password';
+    }
+});
+
+resetNewPasswordInput.addEventListener('input', () => {
+    updatePasswordStrength(resetNewPasswordInput.value, resetStrengthBar, resetStrengthText, resetPasswordBtn);
+});
+
+const newPasswordInput = document.getElementById('newPassword');
+const strengthBar = document.getElementById('strengthBar');
+const strengthText = document.getElementById('strengthText');
+const updateBtn = document.getElementById('updateBtn');
+
+newPasswordInput.addEventListener('input', () => {
+    const val = newPasswordInput.value;
+    let strength = 0;
+
+    // Assessment Criteria
+    if (val.length >= 8) strength++; // Length check
+    if (/[A-Z]/.test(val)) strength++; // Uppercase check
+    if (/[0-9]/.test(val)) strength++; // Number check
+    if (/[^A-Za-z0-9]/.test(val)) strength++; // Special char check
+
+    // Update UI based on strength score
+    switch (strength) {
+        case 0:
+        case 1:
+            strengthBar.style.width = '25%';
+            strengthBar.className = 'h-full transition-all duration-300 bg-red-500';
+            strengthText.innerText = 'Weak';
+            updateBtn.disabled = true; // Force at least medium strength
+            break;
+        case 2:
+            strengthBar.style.width = '50%';
+            strengthBar.className = 'h-full transition-all duration-300 bg-yellow-500';
+            strengthText.innerText = 'Medium';
+            updateBtn.disabled = false;
+            break;
+        case 3:
+            strengthBar.style.width = '75%';
+            strengthBar.className = 'h-full transition-all duration-300 bg-blue-500';
+            strengthText.innerText = 'Strong';
+            updateBtn.disabled = false;
+            break;
+        case 4:
+            strengthBar.style.width = '100%';
+            strengthBar.className = 'h-full transition-all duration-300 bg-green-500';
+            strengthText.innerText = 'Very Strong';
+            updateBtn.disabled = false;
+            break;
+    }
+
+    if (val.length === 0) {
+        strengthBar.style.width = '0%';
+        strengthText.innerText = '';
+    }
+});
+    </script>
+</body>
+</html>

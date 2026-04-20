@@ -1,0 +1,3922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal - ZealHR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .nav-link.active {
+            background-color: #EFF6FF;
+            color: #003D7A;
+            border-left: 4px solid #003D7A;
+        }
+
+        .highlight-flash {
+            animation: highlight-flash 2s ease-in-out;
+            border: 2px solid #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+        }
+
+        .highlight-notification {
+            border-left: 4px solid #f59e0b;
+            background-color: #fff7ed;
+            transition: background-color 0.3s ease;
+        }
+
+        @keyframes highlight-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-lg fixed h-full z-10 flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b border-gray-200 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <img src="../images/logo.jpg" alt="Zeal Community Logo" class="h-14 w-16 object-contain">
+                    <div>
+                        <h1 class="text-[#003D7A] text-sm font-bold">Zeal Community</h1>
+                        <p class="text-gray-500 text-xs">Employee Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation - Scrollable -->
+            <nav class="p-4 space-y-1 flex-1 overflow-y-auto">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Main Menu</p>
+
+                <a href="javascript:void(0)" onclick="loadContent('profile')" class="nav-link active flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition" data-page="profile">
+                    <i class="fas fa-user w-5"></i>
+                    <span>My Profile</span>
+                </a>
+
+                <a href="javascript:void(0)" onclick="loadContent('schedule')" class="nav-link flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition" data-page="schedule">
+                    <i class="fas fa-calendar-alt w-5"></i>
+                    <span>My Schedule</span>
+                </a>
+
+                <a href="javascript:void(0)" onclick="loadContent('payroll')" class="nav-link flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition" data-page="payroll">
+                    <i class="fas fa-file-invoice-dollar w-5"></i>
+                    <span>My Payslips</span>
+                </a>
+
+                <a href="javascript:void(0)" onclick="loadContent('performance')" class="nav-link flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition" data-page="performance">
+                    <i class="fas fa-chart-line w-5"></i>
+                    <span>My Performance</span>
+                </a>
+
+                <a href="javascript:void(0)" onclick="loadContent('leave')" class="nav-link flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition" data-page="leave">
+                    <i class="fas fa-paper-plane w-5"></i>
+                    <span>Leave Requests</span>
+                </a>
+
+                <a href="javascript:void(0)" onclick="loadContent('attendance')" class="nav-link flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition" data-page="attendance">
+                    <i class="fas fa-clock w-5"></i>
+                    <span>Attendance</span>
+                </a>
+
+                <a href="javascript:void(0)" onclick="loadContent('messages')" class="nav-link flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition hidden" data-page="messages">
+                    <i class="fas fa-comments w-5"></i>
+                    <span>Messages</span>
+                </a>
+            </nav>
+
+            <!-- Logout - Fixed at bottom -->
+            <div class="p-4 border-t border-gray-200 flex-shrink-0 bg-white">
+                <a href="login.html" class="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition">
+                    <i class="fas fa-sign-out-alt w-5"></i>
+                    <span>Sign Out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 ml-64">
+            <!-- Top Header -->
+            <header class="bg-white shadow-sm px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900" id="pageTitle">My Profile</h1>
+                    <p id="headerWelcome" class="text-sm text-gray-500">Welcome back, User</p>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    
+                    <!-- Messaging Button -->
+                    <div class="relative">
+                        <button onclick="toggleMessagingModal()" class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-comments text-lg"></i>
+                            <span id="unreadMessagesBadge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+                        </button>
+                    </div>
+
+                    <!-- Notifications from HR -->
+                    <div class="relative">
+                        <button onclick="toggleNotificationDropdown()" class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notificationBadge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                        </button>
+                        
+                        <!-- Notifications Dropdown -->
+                        <div id="notificationDropdown" class="hidden absolute right-0 top-12 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                                <h3 class="font-bold text-gray-900">Notifications</h3>
+                                <button onclick="markAllNotificationsRead()" class="text-[#003D7A] text-xs font-medium hover:underline">Mark all read</button>
+                            </div>
+                            <div id="notificationList" class="max-h-80 overflow-y-auto">
+                                <div class="p-4 text-center text-gray-500">No notifications yet</div>
+                            </div>
+                            <div class="p-3 border-t border-gray-200">
+                                <button onclick="loadContent('notifications'); document.getElementById('notificationDropdown').classList.add('hidden');" class="w-full text-center text-[#003D7A] font-medium text-sm hover:underline">
+                                    View All Notifications
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+<audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+                    <!-- Profile Menu -->
+                    <div class="flex items-center gap-3 pl-4 border-l border-gray-200">
+                        <img class="w-10 h-10 rounded-full object-cover" id="headerProfilePic" src="/uploads/profiles/default-avatar.png" alt="Profile">
+                        <div class="hidden md:block">
+                            <p id="headerProfileName" class="font-semibold text-gray-900 text-sm">User</p>
+                            <p id="headerProfileInfo" class="text-xs text-gray-500">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div id="contentArea">
+                <!-- Dashboard Content will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Messaging Modal -->
+    <div id="messagingModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[600px] flex">
+                <!-- Conversations Sidebar -->
+                <div class="w-1/3 border-r border-gray-200 flex flex-col">
+                    <div class="p-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-gray-900">Messages</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openNewChatModal()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button onclick="toggleMessagingModal()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="messageSearch" placeholder="Search employees..." 
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        <div id="messageSearchResults" class="mt-3 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white hidden"></div>
+                    </div>
+                    <div id="conversationsList" class="flex-1 overflow-y-auto">
+                        <!-- Conversations will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Chat Area -->
+                <div class="flex-1 flex flex-col">
+                    <div id="chatHeader" class="p-4 border-b border-gray-200 hidden">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img id="chatAvatar" src="/uploads/profiles/default-avatar.png" class="w-10 h-10 rounded-full">
+                                <div>
+                                    <h4 id="chatName" class="font-semibold text-gray-900">Select a conversation</h4>
+                                    <p id="chatStatus" class="text-sm text-gray-500">Active</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="groupPhotoButton" onclick="triggerGroupPhotoUpload()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-full hidden" title="Change group photo">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                                <button onclick="closeChat()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" id="groupPhotoInput" accept="image/*" class="hidden" onchange="uploadGroupPhoto(this)">
+
+                    <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 hidden">
+                        <!-- Messages will be loaded here -->
+                    </div>
+
+                    <div id="messageInput" class="p-4 border-t border-gray-200 hidden">
+                        <div class="flex items-end gap-2">
+                            <button onclick="toggleAttachmentMenu()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <div class="flex-1 relative">
+                                <textarea id="messageText" placeholder="Type a message..." 
+                                        class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#003D7A] focus:border-transparent"
+                                        rows="1" onkeydown="handleMessageKeydown(event)"></textarea>
+                            </div>
+                            <button onclick="sendMessage()" class="p-3 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] transition">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <!-- Attachment Menu -->
+                        <div id="attachmentMenu" class="hidden mt-2 p-2 bg-gray-50 rounded-lg">
+                            <div class="flex gap-2">
+                                <label class="flex items-center gap-2 p-2 text-gray-600 hover:bg-gray-100 rounded cursor-pointer">
+                                    <i class="fas fa-image"></i>
+                                    <span>Image</span>
+                                    <input type="file" accept="image/*" onchange="sendMediaMessage(this, 'image')" class="hidden">
+                                </label>
+                                <label class="flex items-center gap-2 p-2 text-gray-600 hover:bg-gray-100 rounded cursor-pointer">
+                                    <i class="fas fa-video"></i>
+                                    <span>Video</span>
+                                    <input type="file" accept="video/*" onchange="sendMediaMessage(this, 'video')" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Chat Modal -->
+    <div id="newChatModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[60]">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Start New Conversation</h3>
+                        <button onclick="closeNewChatModal()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Employees</label>
+                            <input type="text" id="newChatSearch" placeholder="Type employee name or ID..." 
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003D7A] focus:border-transparent">
+                        </div>
+                        
+                        <div id="searchResults" class="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                            <!-- Search results will appear here -->
+                        </div>
+
+                        <div class="flex gap-2 pt-4">
+                            <button onclick="closeNewChatModal()" class="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Cancel
+                            </button>
+                            <button onclick="createGroupChat()" id="createGroupBtn" class="flex-1 px-4 py-2 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] hidden">
+                                Create Group
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      
+        function toggleNotificationDropdown() {
+            document.getElementById('notificationDropdown').classList.toggle('hidden');
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            const notifBtn = e.target.closest('[onclick="toggleNotificationDropdown()"]');
+            const notifDropdown = document.getElementById('notificationDropdown');
+ 
+            if (!notifBtn && !notifDropdown?.contains(e.target)) {
+                notifDropdown?.classList.add('hidden');
+            }
+        });
+
+        // SOCKET.IO for realtime notifications
+        const socket = io(window.location.origin, { transports: ['websocket'] });
+
+        socket.on('connect', () => {
+            console.log('Employee socket connected:', socket.id);
+            // Join user room for messaging
+            const employeeId = localStorage.getItem('employeeId');
+            if (employeeId) {
+                socket.emit('join-user-room', employeeId);
+            }
+        });
+
+        socket.on('connect_error', (err) => {
+            console.error('Employee socket connection error:', err.message);
+        });
+
+        socket.on('new-notification', (notif) => {
+            const employeeId = (localStorage.getItem('employeeId') || '').toUpperCase();
+            const userRole = (JSON.parse(localStorage.getItem('loggedInUser') || '{}').role || '').toLowerCase();
+
+            if (!employeeId) return;
+
+            // Show only relevant notifications for this employee
+            if (notif.recipientId?.toUpperCase() === employeeId || notif.recipientRole?.toLowerCase() === userRole) {
+                loadEmployeeNotifications();
+                // Play notification sound
+                const audio = document.getElementById('notif-sound');
+                if (audio) {
+                    audio.currentTime = 0;
+                    audio.play().catch(err => console.error('Error playing notification sound:', err));
+                }
+            }
+        });
+
+        socket.on('notifications-updated', () => {
+            loadEmployeeNotifications();
+            // Play notification sound
+            const audio = document.getElementById('notif-sound');
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play().catch(err => console.error('Error playing notification sound:', err));
+            }
+        });
+
+        function enableSound() {
+            const audio = document.getElementById('notif-sound');
+            if (!audio) return;
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                console.log('🔊 Sound unlocked!');
+            }).catch(() => {});
+        }
+
+        document.addEventListener('click', enableSound, { once: true });
+        document.addEventListener('keydown', enableSound, { once: true });
+
+        function playMessageSound() {
+            const audio = document.getElementById('notif-sound');
+            if (!audio) return;
+            audio.currentTime = 0;
+            audio.play().catch(err => console.error('Error playing message sound:', err));
+        }
+
+
+
+
+
+        function triggerGroupPhotoUpload() {
+            const input = document.getElementById('groupPhotoInput');
+            if (input) {
+                input.click();
+            }
+        }
+
+        async function uploadGroupPhoto(input) {
+            try {
+                if (!input.files || input.files.length === 0) return;
+                if (!currentConversationId) {
+                    alert('No conversation selected.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('groupPhoto', input.files[0]);
+
+                const response = await fetch(`/api/messaging/groups/${currentConversationId}/photo`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Error uploading group photo:', response.status, text);
+                    alert('Failed to upload group photo. See console for details.');
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadConversationDetails(currentConversationId);
+                    await loadConversations();
+                } else {
+                    alert(data.message || 'Failed to update group photo');
+                }
+            } catch (error) {
+                console.error('Error uploading group photo:', error);
+                alert('There was an error uploading the group photo.');
+            }
+        }
+
+        // Load initial page (check URL hash for persisted state)
+        document.addEventListener('DOMContentLoaded', function() {
+            const hash = window.location.hash.substring(1);
+            const validPages = ['profile', 'schedule', 'payroll', 'messages', 'performance', 'leave', 'attendance', 'notifications'];
+            const initialPage = validPages.includes(hash) ? hash : 'profile';
+            loadContent(initialPage);
+            
+            // Load pending changes + notifications on page load
+            setTimeout(() => {
+                loadPendingChanges();
+                loadEmployeeNotifications();
+            }, 500);
+        });
+
+        // Handle browser back/forward navigation
+        window.addEventListener('hashchange', function() {
+            const hash = window.location.hash.substring(1);
+            if (hash) loadContent(hash);
+        });
+
+        // --- SUBMIT PROFILE CHANGE FOR APPROVAL ---
+        async function submitProfileChange(changeType, changedData) {
+            try {
+                const employeeId = localStorage.getItem('employeeId');
+                if (!employeeId) {
+                    alert('Employee ID not found');
+                    return;
+                }
+
+                const response = await fetch('/api/employee/submit-profile-change', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employeeId,
+                        changeType,
+                        changedData
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Refresh latest profile (fetch from server)
+                    await loadEmployeeProfile();
+
+                    // Close the modal
+                    if (changeType === 'profile') closeEditProfileModal();
+                    else if (changeType === 'personal') closeEditPersonalModal();
+                    else if (changeType === 'emergency') closeEditEmergencyModal();
+                    else if (changeType === 'government') closeEditGovernmentModal();
+                    else if (changeType === 'bank') closeEditBankModal();
+
+                    // Show success
+                    showSubmitSuccess();
+                    
+                    // Reload pending changes
+                    loadPendingChanges();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error("Error submitting profile change:", error);
+                alert('Failed to submit changes');
+            }
+        }
+
+        // --- LOAD PENDING PROFILE CHANGES ---
+        async function loadPendingChanges() {
+            try {
+                const employeeId = localStorage.getItem('employeeId');
+                if (!employeeId) return;
+
+                const response = await fetch(`/api/employee/pending-changes/${employeeId}`);
+                const data = await response.json();
+
+                if (data.success && data.pendingChanges) {
+                    const container = document.getElementById('pendingApprovalsContainer');
+                    if (!container) return;
+                    
+                    if (data.pendingChanges.length === 0) {
+                        container.innerHTML = '<div class="p-4 bg-green-50 border border-green-200 rounded-lg text-center"><p class="text-sm text-green-700"><i class="fas fa-check-circle mr-2"></i>No pending changes</p></div>';
+                        return;
+                    }
+
+                    let html = '';
+                    const changeTypeLabels = {
+                        'personal': 'Personal Information',
+                        'contact': 'Contact Details',
+                        'emergency': 'Emergency Contact',
+                        'government': 'Government IDs',
+                        'bank': 'Bank Information',
+                        'profile': 'Profile Photo'
+                    };
+
+                    data.pendingChanges.forEach(change => {
+                        const submittedDate = new Date(change.submittedAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+
+                        html += `
+                            <div class="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="font-semibold text-gray-900 text-sm">${changeTypeLabels[change.changeType] || change.changeType}</span>
+                                    <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">Pending</span>
+                                </div>
+                                <p class="text-xs text-gray-600 mb-2">Submitted: ${submittedDate}</p>
+                                <p class="text-xs text-gray-500">Awaiting HR approval</p>
+                            </div>
+                        `;
+                    });
+
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                console.error("Error loading pending changes:", error);
+            }
+        }
+
+        // --- LOAD EMPLOYEE PROFILE DATA ---
+        async function loadEmployeeProfile() {
+            try {
+                const employeeId = localStorage.getItem('employeeId');
+                if (!employeeId) {
+                    console.error("Employee ID not found in localStorage");
+                    return;
+                }
+
+                const response = await fetch(`/api/employee/profile/${employeeId}`);
+                const data = await response.json();
+
+                if (!data.success || !data.profile) {
+                    console.error("Failed to load profile:", data);
+                    return;
+                }
+
+                const profile = data.profile;
+
+                // Calculate initials from full name
+                const initials = profile.fullName
+                    ?.split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .substring(0, 2)
+                    .toUpperCase() || '--';
+
+                // Update Profile Card
+                document.getElementById('profileImage').src = profile.profilePic || '/uploads/profiles/default-avatar.png';
+                document.getElementById('profileFullName').textContent = profile.fullName || 'User';
+                document.getElementById('profilePosition').textContent = profile.position || 'Staff';
+                document.getElementById('profileEmployeeId').textContent = profile.employeeId;
+                document.getElementById('profileDepartment').textContent = profile.department || 'N/A';
+                
+                // Format hire date
+                const hireDate = profile.hireDate ? new Date(profile.hireDate) : null;
+                const hireDateStr = hireDate ? `Joined ${hireDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : 'N/A';
+                document.getElementById('profileHireDate').textContent = hireDateStr;
+                
+                document.getElementById('profileEmail').textContent = profile.email || 'N/A';
+                document.getElementById('profilePhone').textContent = profile.phoneNumber || 'N/A';
+
+                const qrImage = document.getElementById('profileQrImage');
+                const downloadQrBtn = document.getElementById('downloadQrBtn');
+                const qrPreviewContainer = document.getElementById('qrPreviewContainer');
+                const qrNotAvailable = document.getElementById('qrNotAvailable');
+                if (profile.qrCodePath) {
+                    const qrUrl = profile.qrCodePath.startsWith('/') ? profile.qrCodePath : `/${profile.qrCodePath}`;
+                    qrImage.src = qrUrl;
+                    qrImage.alt = `${profile.fullName || 'Employee'} QR Code`;
+                    downloadQrBtn.href = qrUrl;
+                    downloadQrBtn.setAttribute('download', `${profile.employeeId || 'employee'}-qr.png`);
+                    qrPreviewContainer.classList.remove('hidden');
+                    qrNotAvailable.classList.add('hidden');
+                } else {
+                    qrPreviewContainer.classList.add('hidden');
+                    qrNotAvailable.classList.remove('hidden');
+                }
+
+                // Update Employment Summary
+                document.getElementById('employmentType').textContent = profile.contractType || 'Full-time';
+                document.getElementById('department').textContent = profile.department || 'N/A';
+                document.getElementById('employeeGrade').textContent = profile.grade || 'N/A';
+
+                // Update Bank & Government IDs in profile display
+                document.getElementById('sssNumberDetail').textContent = profile.sssNumber || 'N/A';
+                document.getElementById('philhealthNumberDetail').textContent = profile.philHealthNumber || profile.philhealthNumber || 'N/A';
+                document.getElementById('pagibigNumberDetail').textContent = profile.pagIbigNumber || profile.pagibigNumber || 'N/A';
+                document.getElementById('tinDetail').textContent = profile.tin || 'N/A';
+
+                document.getElementById('bankNameDetail').textContent = profile.bankName || 'N/A';
+                document.getElementById('accountNumberDetail').textContent = profile.accountNumber ? profile.accountNumber.replace(/.(?=.{4})/g, '*') : 'N/A';
+                document.getElementById('accountTypeDetail').textContent = profile.accountType || 'N/A';
+                document.getElementById('branchDetail').textContent = profile.branch || 'N/A';
+
+                // Update Personal Information
+                document.getElementById('fullNameDetail').textContent = profile.fullName || 'Not provided';
+                
+                const dobStr = profile.dob ? new Date(profile.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not provided';
+                document.getElementById('dateOfBirthDetail').textContent = dobStr;
+                
+                document.getElementById('genderDetail').textContent = profile.gender || 'Not provided';
+                document.getElementById('civilStatusDetail').textContent = profile.civilStatus || 'Not provided';
+                document.getElementById('bloodTypeDetail').textContent = profile.bloodType || 'Not provided';
+                document.getElementById('nationalityDetail').textContent = profile.nationality || 'Filipino';
+                document.getElementById('addressDetail').textContent = profile.address || 'Not provided';
+
+                // Update Emergency Contact
+                document.getElementById('emergencyName').textContent = profile.emergencyName || 'Not provided';
+                document.getElementById('emergencyRelation').textContent = profile.emergencyRelation || 'Not provided';
+                document.getElementById('emergencyPhone').textContent = profile.emergencyNo || 'Not provided';
+
+                // Update HEADER with employee info
+                document.getElementById('headerProfilePic').src = profile.profilePic || '/uploads/profiles/default-avatar.png';
+                document.getElementById('headerProfileName').textContent = profile.fullName || 'User';
+                document.getElementById('headerProfileInfo').textContent = `${profile.employeeId} • ${profile.position || 'Staff'}`;
+                document.getElementById('headerWelcome').textContent = `Welcome back, ${profile.fullName || 'User'}`;
+
+                console.log("Profile loaded successfully:", profile);
+
+                // Store profile data in localStorage for modal population
+                localStorage.setItem('employeeProfile', JSON.stringify(profile));
+
+            } catch (error) {
+                console.error("Error loading profile:", error);
+            }
+        }
+
+        async function loadEmployeeNotifications() {
+    try {
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+        const employeeId = (localStorage.getItem('employeeId') || loggedInUser.employeeId || '').toUpperCase();
+        const userRole = (loggedInUser.role || '').toLowerCase();
+
+        if (!employeeId) {
+            console.warn('No employeeId found in storage');
+            return;
+        }
+
+        // Build the URL with both ID and Role
+        const url = `/api/notifications/all?recipientId=${encodeURIComponent(employeeId)}&recipientRole=${encodeURIComponent(userRole)}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+            console.error('Invalid notification data format:', data);
+            return;
+        }
+
+        renderNotificationList(data);
+        if (typeof processNotificationHighlight === 'function') {
+            processNotificationHighlight();
+        }
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+        function renderNotificationList(notifications) {
+            const list = document.getElementById('notificationList');
+            if (!list) return;
+
+            if (!notifications || notifications.length === 0) {
+                list.innerHTML = '<div class="p-4 text-center text-gray-500">No notifications yet</div>';
+                updateNotificationBadge(0);
+                return;
+            }
+
+            const unread = notifications.filter(n => !n.isRead).length;
+            updateNotificationBadge(unread);
+
+            list.innerHTML = notifications.map(n => {
+                const createdAt = n.createdAt ? new Date(n.createdAt).toLocaleString() : 'Just now';
+                const unreadClass = n.isRead ? 'bg-white' : 'bg-blue-50';
+                const safeUrl = n.url || '';
+                return `
+                    <div id="notif-${n._id}" class="p-3 border-b border-gray-100 ${unreadClass} hover:bg-gray-100 cursor-pointer" onclick="handleNotificationClick('${n._id}', '${safeUrl}')">
+                        <p class="text-sm font-semibold text-gray-900">${n.title || 'Notification'}</p>
+                        <p class="text-xs text-gray-500 mt-1">${n.message || ''}</p>
+                        <p class="text-xs text-gray-400 mt-1">${createdAt}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function highlightNotificationElement(id) {
+            if (!id) return;
+            const target = document.getElementById(`notif-${id}`);
+            if (!target) return;
+            target.classList.add('highlight-notification');
+            setTimeout(() => {
+                target.classList.remove('highlight-notification');
+            }, 2400);
+        }
+
+        function processNotificationHighlight() {
+            const idx = localStorage.getItem('highlightNotificationId');
+            if (idx) {
+                highlightNotificationElement(idx);
+                localStorage.removeItem('highlightNotificationId');
+            }
+        }
+
+        function updateNotificationBadge(count) {
+            const badge = document.getElementById('notificationBadge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        async function markNotificationRead(id) {
+            try {
+                if (!id) return;
+                await fetch(`/api/notifications/mark-read/${id}`, { method: 'PUT' });
+                await loadEmployeeNotifications();
+            } catch (err) {
+                console.error('Error marking notification read:', err);
+            }
+        }
+
+        async function markAllNotificationsRead() {
+            try {
+                await fetch('/api/notifications/mark-all-read', { method: 'PUT' });
+                await loadEmployeeNotifications();
+            } catch (err) {
+                console.error('Error marking all notifications read:', err);
+            }
+        }
+
+        async function handleNotificationClick(id, url) {
+            if (!id) return;
+
+            // Mark as read first
+            await markNotificationRead(id);
+            document.getElementById('notificationDropdown')?.classList.add('hidden');
+
+            if (!url) return;
+
+            // Navigate to the correct page in the employee app
+            let targetPage;
+            if (url.startsWith('/')) url = url.substring(1);
+            if (url.startsWith('employee/pages/')) {
+                targetPage = url.replace('employee/pages/', '').replace('.html', '');
+            } else if (url.startsWith('pages/')) {
+                targetPage = url.replace('pages/', '').replace('.html', '');
+            }
+
+            // Save selected highlight instruction
+            if (targetPage) {
+                localStorage.setItem('highlightNotificationId', id);
+                localStorage.setItem('highlightNotificationPage', targetPage);
+                loadContent(targetPage);
+            } else {
+                // Fallback to full URL
+                window.location.href = '/' + url;
+            }
+        }
+
+        function highlightTriggeredNotification() {
+            const selectedId = localStorage.getItem('highlightNotificationId');
+            const selectedPage = localStorage.getItem('highlightNotificationPage');
+            if (!selectedId || !selectedPage) return;
+
+            if (selectedPage === 'profile') {
+                const container = document.getElementById('profileMainContainer');
+                if (container) {
+                    container.classList.add('highlight-flash');
+                    setTimeout(() => container.classList.remove('highlight-flash'), 2100);
+                }
+            }
+
+            localStorage.removeItem('highlightNotificationId');
+            localStorage.removeItem('highlightNotificationPage');
+        }
+
+          // Shift display mapping
+        const shiftDisplay = {
+            'morning': { time: '8AM-4PM', color: 'bg-blue-800 text-white' },
+            'afternoon': { time: '12PM-8PM', color: 'bg-purple-500 text-white' },
+            'evening': { time: '4PM-12AM', color: 'bg-purple-500 text-white' },
+            'night': { time: '12AM-8AM', color: 'bg-gray-800 text-white' },
+            'off': { time: 'OFF', color: 'bg-green-500 text-white' },
+            'leave': { time: 'Leave', color: 'bg-yellow-500 text-white' }
+        };
+
+        async function loadEmployeeSchedule() {
+            try {
+                const employeeId = localStorage.getItem('employeeId');
+                if (!employeeId) return;
+
+                const currentDate = new Date();
+                const month = currentDate.getMonth() + 1;
+                const year = currentDate.getFullYear();
+
+                const response = await fetch(`/api/shifts/employee/${employeeId}?month=${month}&year=${year}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Calculate summary
+                    let workingDays = 0;
+                    let daysOff = 0;
+                    let leaveDays = 0;
+                    let overtimeHours = 0;
+
+                    data.shifts.forEach(shift => {
+                        if (shift.shift === 'off') daysOff++;
+                        else if (shift.shift === 'leave') leaveDays++;
+                        else {
+                            workingDays++;
+                            // Assume afternoon/evening shifts are overtime (8 hours each)
+                            if (shift.shift === 'afternoon' || shift.shift === 'evening') {
+                                overtimeHours += 8;
+                            }
+                        }
+                    });
+
+                    // Calculate total days in month and unassigned days as days off
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    const assignedDays = workingDays + leaveDays + daysOff;
+                    const unassignedDays = daysInMonth - assignedDays;
+                    const totalDaysOff = daysOff + unassignedDays;
+
+                    // Update summary
+                    document.getElementById('workingDays').textContent = workingDays;
+                    document.getElementById('daysOff').textContent = totalDaysOff;
+                    document.getElementById('leaveDays').textContent = leaveDays;
+                    document.getElementById('overtimeHours').textContent = overtimeHours + 'h';
+
+                    renderCalendar(data.shifts, month, year);
+                }
+            } catch (error) {
+                console.error('Error loading schedule:', error);
+            }
+        }
+
+        function renderCalendar(shifts, month, year) {
+            const grid = document.getElementById('calendarGrid');
+            if (!grid) return;
+
+            // Create a map of date to shift
+            const shiftMap = {};
+            shifts.forEach(shift => {
+                const date = new Date(shift.date).getDate();
+                shiftMap[date] = shift;
+            });
+
+            // Get first day of month
+            const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
+
+            // Days in month
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            // Previous month days
+            const prevMonthDays = new Date(year, month - 1, 0).getDate();
+
+            let html = '';
+
+            let day = 1;
+            for (let week = 0; week < 6; week++) {
+                for (let wd = 0; wd < 7; wd++) {
+                    if (week === 0 && wd < firstDay) {
+                        // Previous month
+                        const prevDay = prevMonthDays - firstDay + wd + 1;
+                        html += `<div class="p-2 border-b border-r min-h-[100px] bg-gray-50 text-gray-400">
+<span class="text-sm">${prevDay}</span>
+</div>`;
+                    } else if (day > daysInMonth) {
+                        // Next month
+                        const nextDay = day - daysInMonth;
+                        html += `<div class="p-2 border-b border-r min-h-[100px] bg-gray-50 text-gray-400">
+<span class="text-sm">${nextDay}</span>
+</div>`;
+                        day++;
+                    } else {
+                        // Current month
+                        const shift = shiftMap[day];
+                        let content = `<span class="text-sm font-medium">${day}</span>`;
+                        if (shift) {
+                            const display = shiftDisplay[shift.shift] || { time: shift.shift, color: 'bg-gray-500 text-white' };
+                            content += `<div class="mt-1 ${display.color} text-xs p-1 rounded">${display.time}</div>`;
+                        }
+                        const isToday = new Date().getDate() === day && new Date().getMonth() === month - 1 && new Date().getFullYear() === year;
+                        const todayClass = isToday ? 'bg-blue-50' : '';
+                        html += `<div class="p-2 border-b border-r min-h-[100px] ${todayClass}">${content}</div>`;
+                        day++;
+                    }
+                }
+                if (day > daysInMonth + 7) break;
+            }
+            grid.innerHTML = html;
+
+            // Update month year
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('monthYear').textContent = `${monthNames[month-1]} ${year}`;
+        }
+
+        function loadContent(page) {
+            console.log('📄 Loading page:', page);
+            const contentArea = document.getElementById('contentArea');
+            const pageTitle = document.getElementById('pageTitle');
+            
+            // Close any open dropdowns
+            document.getElementById('notificationDropdown')?.classList.add('hidden');
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-page') === page) {
+                    link.classList.add('active');
+                }
+            });
+
+            // Update page title
+            const titles = {
+                'profile': 'My Profile',
+                'schedule': 'My Schedule',
+                'payroll': 'My Payslips',
+                'messages': 'Messages',
+                'performance': 'My Performance',
+                'leave': 'Leave Requests',
+                'attendance': 'Attendance',
+                'announcements': 'Announcements',
+                'documents': 'Documents',
+                'help': 'Help & Support',
+                'notifications': 'My Notifications'
+            };
+            pageTitle.textContent = titles[page] || 'My Profile';
+
+            // Save current page to URL hash for persistence
+            if (window.location.hash.substring(1) !== page) {
+                history.replaceState(null, '', '#' + page);
+            }
+
+            // Load page content
+            console.log('📄 Fetching page content:', `pages/${page}.html`);
+            fetch(`pages/${page}.html`)
+                .then(response => {
+                    console.log('📄 Page fetch response:', response.status, response.ok);
+                    if (!response.ok) throw new Error('Page not found');
+                    return response.text();
+                })
+                .then(html => {
+                    console.log('📄 Page HTML loaded, length:', html.length);
+                    contentArea.innerHTML = html;
+                    console.log('📄 Calling initializePageScripts for:', page);
+                    initializePageScripts(page);
+                    // Trigger highlight if destination came from notification
+                    highlightTriggeredNotification();
+                })
+                .catch(error => {
+                    console.log('❌ Error loading page:', error);
+                    contentArea.innerHTML = `<div class="p-8"><div class="bg-white rounded-lg shadow p-8 text-center">
+                        <i class="fas fa-exclamation-circle text-gray-300 text-6xl mb-4"></i>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Page Coming Soon</h3>
+                        <p class="text-gray-600">This feature is under development.</p>
+                    </div></div>`;
+                });
+        }
+
+
+        const shiftSwapData = {
+            myShifts: [],
+            colleagueShifts: [],
+            myShiftMap: {},
+            colleagueShiftMap: {},
+            employees: [],
+            month: null,
+            year: null
+        };
+
+        async function loadEmployeeSchedule() {
+            try {
+                const employeeId = localStorage.getItem('employeeId');
+                if (!employeeId) return;
+
+                const currentDate = new Date();
+                const month = currentDate.getMonth() + 1;
+                const year = currentDate.getFullYear();
+                shiftSwapData.month = month;
+                shiftSwapData.year = year;
+
+                const response = await fetch(`/api/shifts/employee/${employeeId}?month=${month}&year=${year}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    shiftSwapData.myShifts = data.shifts || [];
+                    shiftSwapData.myShiftMap = {};
+                    shiftSwapData.myShifts.forEach(shift => {
+                        shiftSwapData.myShiftMap[shift._id] = shift;
+                    });
+
+                    // Calculate summary
+                    let workingDays = 0;
+                    let daysOff = 0;
+                    let leaveDays = 0;
+                    let overtimeHours = 0;
+
+                    data.shifts.forEach(shift => {
+                        if (shift.shift === 'off') daysOff++;
+                        else if (shift.shift === 'leave') leaveDays++;
+                        else {
+                            workingDays++;
+                            if (shift.shift === 'afternoon' || shift.shift === 'evening') {
+                                overtimeHours += 8;
+                            }
+                        }
+                    });
+
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    const assignedDays = workingDays + leaveDays + daysOff;
+                    const unassignedDays = Math.max(0, daysInMonth - assignedDays);
+                    const totalDaysOff = daysOff + unassignedDays;
+
+                    document.getElementById('workingDays').textContent = workingDays;
+                    document.getElementById('daysOff').textContent = totalDaysOff;
+                    document.getElementById('leaveDays').textContent = leaveDays;
+                    document.getElementById('overtimeHours').textContent = overtimeHours + 'h';
+
+                    renderCalendar(data.shifts, month, year);
+                }
+            } catch (error) {
+                console.error('Error loading schedule:', error);
+            }
+        }
+
+
+
+
+        async function loadShiftSwapData() {
+            try {
+                const employeeId = localStorage.getItem('employeeId');
+                if (!employeeId) return;
+
+                const month = shiftSwapData.month || new Date().getMonth() + 1;
+                const year = shiftSwapData.year || new Date().getFullYear();
+
+                const [myShiftResp, employeesResp] = await Promise.all([
+                    fetch(`/api/shifts/employee/${employeeId}?month=${month}&year=${year}`),
+                    fetch('/api/employees/list?page=1&limit=100')
+                ]);
+
+                const [myShiftData, employeesData] = await Promise.all([myShiftResp.json(), employeesResp.json()]);
+
+                shiftSwapData.myShifts = myShiftData.success ? myShiftData.shifts : [];
+                shiftSwapData.myShiftMap = {};
+                shiftSwapData.myShifts.forEach(shift => {
+                    shiftSwapData.myShiftMap[shift._id] = shift;
+                });
+
+                shiftSwapData.employees = (employeesData.employees || []).filter(emp => emp.employeeId !== employeeId);
+                populateMyShiftOptions();
+                populateColleagueOptions();
+            } catch (error) {
+                console.error('Error loading shift swap data:', error);
+            }
+        }
+
+        function populateMyShiftOptions() {
+            const select = document.getElementById('myShiftSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">Select your shift...</option>';
+            if (!shiftSwapData.myShifts.length) {
+                select.innerHTML += '<option value="" disabled>No assigned shifts this month</option>';
+                return;
+            }
+            shiftSwapData.myShifts.forEach(shift => {
+                const date = new Date(shift.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const label = `${date} - ${shift.shift.charAt(0).toUpperCase() + shift.shift.slice(1)} (${shiftDisplay[shift.shift]?.time || shift.shift})`;
+                select.innerHTML += `<option value="${shift._id}">${label}</option>`;
+            });
+        }
+
+        function populateColleagueOptions() {
+            const select = document.getElementById('colleagueSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">Select colleague...</option>';
+            shiftSwapData.employees.forEach(emp => {
+                select.innerHTML += `<option value="${emp.employeeId}">${emp.fullName || emp.employeeId} (${emp.employeeId})</option>`;
+            });
+            const theirShiftSelect = document.getElementById('theirShiftSelect');
+            if (theirShiftSelect) {
+                theirShiftSelect.innerHTML = '<option value="">Select their shift...</option>';
+            }
+        }
+
+        async function loadColleagueShifts(employeeId) {
+            const select = document.getElementById('theirShiftSelect');
+            if (!select) return;
+
+            if (!employeeId) {
+                select.innerHTML = '<option value="">Select their shift...</option>';
+                return;
+            }
+
+            const response = await fetch(`/api/shifts/employee/${employeeId}?month=${shiftSwapData.month}&year=${shiftSwapData.year}`);
+            const data = await response.json();
+            shiftSwapData.colleagueShifts = data.success ? data.shifts : [];
+            shiftSwapData.colleagueShiftMap = {};
+            select.innerHTML = '<option value="">Select their shift...</option>';
+
+            if (!shiftSwapData.colleagueShifts.length) {
+                select.innerHTML += '<option value="" disabled>No shifts found for this colleague</option>';
+                return;
+            }
+
+            shiftSwapData.colleagueShifts.forEach(shift => {
+                shiftSwapData.colleagueShiftMap[shift._id] = shift;
+                const date = new Date(shift.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const label = `${date} - ${shift.shift.charAt(0).toUpperCase() + shift.shift.slice(1)} (${shiftDisplay[shift.shift]?.time || shift.shift})`;
+                select.innerHTML += `<option value="${shift._id}">${label}</option>`;
+            });
+        }
+
+        window.openSwapRequestModal = async function() {
+            await loadShiftSwapData();
+            document.getElementById('swapRequestModal').classList.remove('hidden');
+        };
+
+        window.submitSwapRequest = async function() {
+            const myShiftId = document.getElementById('myShiftSelect').value;
+            const colleagueId = document.getElementById('colleagueSelect').value;
+            const colleagueShiftId = document.getElementById('theirShiftSelect').value;
+            const reason = document.getElementById('swapReason').value.trim();
+            const employeeId = localStorage.getItem('employeeId');
+            const loggedUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+
+            if (!myShiftId || !colleagueId || !colleagueShiftId) {
+                alert('Please select your shift, a colleague, and their shift.');
+                return;
+            }
+
+            const myShift = shiftSwapData.myShiftMap[myShiftId];
+            const colleagueShift = shiftSwapData.colleagueShiftMap[colleagueShiftId];
+            if (!myShift || !colleagueShift) {
+                alert('Shift details are missing. Please try again.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/employee/submit-shift-swap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employeeId,
+                        employeeName: loggedUser.name || '',
+                        colleagueId,
+                        colleagueName: shiftSwapData.employees.find(emp => emp.employeeId === colleagueId)?.fullName || '',
+                        myShiftId,
+                        myShiftDate: myShift.date,
+                        myShiftLabel: myShift.shift,
+                        myShiftDepartment: myShift.department || '',
+                        myShiftNotes: myShift.notes || '',
+                        colleagueShiftId,
+                        colleagueShiftDate: colleagueShift.date,
+                        colleagueShiftLabel: colleagueShift.shift,
+                        colleagueShiftDepartment: colleagueShift.department || '',
+                        colleagueShiftNotes: colleagueShift.notes || '',
+                        reason
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    closeSwapRequestModal();
+                    document.getElementById('swapSuccessModal').classList.remove('hidden');
+                } else {
+                    alert('Error: ' + (data.message || 'Could not submit swap request'));
+                }
+            } catch (error) {
+                console.error('Error submitting swap request:', error);
+                alert('Failed to submit swap request');
+            }
+        };
+
+        function initializePageScripts(page) {
+            console.log('🔧 Initializing page scripts for:', page);
+            // Initialize page-specific scripts here
+            if (page === 'profile') {
+                // Fetch and display employee profile
+                loadEmployeeProfile();
+
+                // Edit Profile Modal
+                window.openEditProfileModal = async function() {
+                    // Fetch newest profile from API before showing edit modal
+                    await loadEmployeeProfile();
+
+                    // Populate modal with current data
+                    const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+
+                    // Phone and email inputs
+                    const phoneInput = document.querySelector('#editProfileModal input[type="tel"]');
+                    const emailInput = document.querySelector('#editProfileModal input[type="email"]');
+                    const profileAvatar = document.getElementById('editProfileAvatar');
+                    const fileInput = document.getElementById('profilePicFileInput');
+                    const chooseButton = document.getElementById('chooseProfilePicBtn');
+
+                    if (phoneInput) phoneInput.value = profile.phoneNumber || '';
+                    if (emailInput) emailInput.value = profile.email || '';
+                    if (profileAvatar) profileAvatar.src = profile.profilePic || '/uploads/profiles/default-avatar.png';
+
+                    // Reset file input to allow re-upload of same file if needed
+                    if (fileInput) fileInput.value = '';
+
+                    // Handle image selector
+                    if (chooseButton && fileInput) {
+                        chooseButton.onclick = () => fileInput.click();
+                        fileInput.onchange = function() {
+                            const file = fileInput.files[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = e => {
+                                    if (profileAvatar) profileAvatar.src = e.target.result;
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        };
+                    }
+
+                    document.getElementById('editProfileModal').classList.remove('hidden');
+                };
+                window.closeEditProfileModal = function() {
+                    document.getElementById('editProfileModal').classList.add('hidden');
+                };
+                window.submitProfileEdit = async function() {
+                    const phone = document.querySelector('#editProfileModal input[type="tel"]')?.value || '';
+                    const email = document.querySelector('#editProfileModal input[type="email"]')?.value || '';
+                    const fileInput = document.getElementById('profilePicFileInput');
+                    const file = fileInput?.files?.[0];
+
+                    const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+                    const employeeId = profile.employeeId;
+
+                    const changedData = {
+                        phoneNumber: phone,
+                        email: email
+                    };
+
+                    if (file) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('profilePic', file);
+
+                            const uploadResp = await fetch('/api/employee/upload-profile-pic', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            const uploadData = await uploadResp.json();
+                            if (!uploadData.success) {
+                                alert('Profile picture upload failed: ' + (uploadData.message || 'Unknown error'));
+                                return;
+                            }
+
+                            changedData.profilePic = uploadData.profilePic;
+
+                        } catch (err) {
+                            console.error('Profile picture upload failed:', err);
+                            alert('Profile picture upload failed.');
+                            return;
+                        }
+                    }
+
+                    submitProfileChange('profile', changedData);
+                };
+
+                // Edit Personal Info Modal
+                window.openEditPersonalModal = function() {
+                    // Populate modal with current data
+                    const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+                    
+                    // Get modal inputs - use more specific selectors
+                    const inputs = document.querySelectorAll('#editPersonalModal input');
+                    const selects = document.querySelectorAll('#editPersonalModal select');
+                    const textarea = document.querySelector('#editPersonalModal textarea');
+                    
+                    if (inputs[0]) inputs[0].value = profile.fullName || ''; // Full Name
+                    if (inputs[1]) { // Date of Birth
+                        const dob = profile.dob ? new Date(profile.dob).toISOString().split('T')[0] : '';
+                        inputs[1].value = dob;
+                    }
+                    if (selects[0]) selects[0].value = profile.gender || ''; // Gender
+                    if (selects[1]) selects[1].value = profile.civilStatus || ''; // Civil Status
+                    if (inputs[2]) inputs[2].value = profile.nationality || 'Filipino'; // Nationality
+                    if (selects[2]) selects[2].value = profile.bloodType || ''; // Blood Type
+                    if (textarea) textarea.value = profile.address || ''; // Address
+                    
+                    document.getElementById('editPersonalModal').classList.remove('hidden');
+                };
+                window.closeEditPersonalModal = function() {
+                    document.getElementById('editPersonalModal').classList.add('hidden');
+                };
+                window.submitPersonalEdit = function() {
+                    const inputs = document.querySelectorAll('#editPersonalModal input');
+                    const selects = document.querySelectorAll('#editPersonalModal select');
+                    const textarea = document.querySelector('#editPersonalModal textarea');
+                    
+                    const changedData = {
+                        fullName: inputs[0]?.value || '',
+                        dob: inputs[1]?.value || '',
+                        gender: selects[0]?.value || '',
+                        civilStatus: selects[1]?.value || '',
+                        nationality: inputs[2]?.value || '',
+                        bloodType: selects[2]?.value || '',
+                        address: textarea?.value || ''
+                    };
+                    
+                    submitProfileChange('personal', changedData);
+                };
+
+                // Edit Emergency Contact Modal
+                window.openEditEmergencyModal = function() {
+                    // Populate modal with current data
+                    const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+                    
+                    const inputs = document.querySelectorAll('#editEmergencyModal input');
+                    const select = document.querySelector('#editEmergencyModal select');
+                    
+                    if (inputs[0]) inputs[0].value = profile.emergencyName || ''; // Name
+                    if (inputs[1]) inputs[1].value = profile.emergencyNo || ''; // Phone
+                    if (select) select.value = profile.emergencyRelation || ''; // Relation
+                    
+                    document.getElementById('editEmergencyModal').classList.remove('hidden');
+                };
+                window.closeEditEmergencyModal = function() {
+                    document.getElementById('editEmergencyModal').classList.add('hidden');
+                };
+                window.submitEmergencyEdit = function() {
+                    const inputs = document.querySelectorAll('#editEmergencyModal input');
+                    const select = document.querySelector('#editEmergencyModal select');
+                    
+                    const changedData = {
+                        emergencyName: inputs[0]?.value || '',
+                        emergencyPhone: inputs[1]?.value || '',
+                        emergencyRelation: select?.value || ''
+                    };
+                    
+                    submitProfileChange('emergency', changedData);
+                };
+
+                // Edit Government IDs Modal
+                window.openEditGovernmentModal = function() {
+                    // Populate modal with current data
+                    const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+                    
+                    const inputs = document.querySelectorAll('#editGovernmentModal input[type="text"]');
+                    
+                    if (inputs[0]) inputs[0].value = profile.sssNumber || '';
+                if (inputs[1]) inputs[1].value = profile.philHealthNumber || profile.philhealthNumber || '';
+                if (inputs[2]) inputs[2].value = profile.pagIbigNumber || profile.pagibigNumber || '';
+                    
+                    document.getElementById('editGovernmentModal').classList.remove('hidden');
+                };
+                window.closeEditGovernmentModal = function() {
+                    document.getElementById('editGovernmentModal').classList.add('hidden');
+                };
+                window.submitGovernmentEdit = function() {
+                    const inputs = document.querySelectorAll('#editGovernmentModal input[type="text"]');
+                    const changedData = {
+                        sssNumber: inputs[0]?.value || '',
+                        philHealthNumber: inputs[1]?.value || '',
+                        pagIbigNumber: inputs[2]?.value || '',
+                        tin: inputs[3]?.value || ''
+                    };
+                    
+                    submitProfileChange('government', changedData);
+                };
+
+                // Edit Bank Information Modal
+                window.openEditBankModal = function() {
+                    // Populate modal with current data
+                    const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+                    
+                    const selects = document.querySelectorAll('#editBankModal select');
+                    const inputs = document.querySelectorAll('#editBankModal input[type="text"]');
+                    
+                    if (selects[0]) selects[0].value = profile.bankName || ''; // Bank Name
+                    if (selects[1]) selects[1].value = profile.accountType || ''; // Account Type
+                    if (inputs[0]) inputs[0].value = profile.accountNumber || ''; // Account Number
+                    if (inputs[1]) inputs[1].value = profile.branch || ''; // Branch
+                    
+                    document.getElementById('editBankModal').classList.remove('hidden');
+                };
+                window.closeEditBankModal = function() {
+                    document.getElementById('editBankModal').classList.add('hidden');
+                };
+                window.submitBankEdit = function() {
+                    const selects = document.querySelectorAll('#editBankModal select');
+                    const inputs = document.querySelectorAll('#editBankModal input[type="text"]');
+                    
+                    const changedData = {
+                        bankName: selects[0]?.value || '',
+                        accountType: selects[1]?.value || '',
+                        accountNumber: inputs[0]?.value || '',
+                        branch: inputs[1]?.value || ''
+                    };
+                    
+                    submitProfileChange('bank', changedData);
+                };
+
+                // Success Modal
+                window.showSubmitSuccess = function() {
+                    document.getElementById('submitSuccessModal').classList.remove('hidden');
+                    document.getElementById('pendingChangesAlert')?.classList.remove('hidden');
+                };
+                window.closeSubmitSuccessModal = function() {
+                    document.getElementById('submitSuccessModal').classList.add('hidden');
+                };
+
+                // Pending Changes Modal
+                window.viewPendingChanges = function() {
+                    document.getElementById('pendingChangesModal').classList.remove('hidden');
+                    loadPendingChanges();
+                };
+                window.closePendingChangesModal = function() {
+                    document.getElementById('pendingChangesModal').classList.add('hidden');
+                };
+
+                window.openQrPreviewModal = function() {
+                    const qrImage = document.getElementById('profileQrImage');
+                    const modalImage = document.getElementById('qrPreviewModalImage');
+                    const modal = document.getElementById('qrPreviewModal');
+                    if (!qrImage || !modalImage || !modal) return;
+                    modalImage.src = qrImage.src;
+                    modalImage.alt = `${document.getElementById('profileFullName')?.textContent || 'Employee'} QR Code`;
+                    modal.classList.remove('hidden');
+                };
+
+                window.closeQrPreviewModal = function() {
+                    document.getElementById('qrPreviewModal')?.classList.add('hidden');
+                };
+
+                // Close modals on outside click
+                document.getElementById('editProfileModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeEditProfileModal();
+                });
+                document.getElementById('editPersonalModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeEditPersonalModal();
+                });
+                document.getElementById('editEmergencyModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeEditEmergencyModal();
+                });
+                document.getElementById('editGovernmentModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeEditGovernmentModal();
+                });
+                document.getElementById('editBankModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeEditBankModal();
+                });
+                document.getElementById('submitSuccessModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeSubmitSuccessModal();
+                });
+                document.getElementById('pendingChangesModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closePendingChangesModal();
+                });
+                document.getElementById('qrPreviewModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeQrPreviewModal();
+                });
+
+                // Load pending changes function
+                async function loadPendingChanges() {
+                    try {
+                        const employeeId = localStorage.getItem('employeeId');
+                        if (!employeeId) return;
+
+                        const response = await fetch(`/api/employee/pending-changes/${employeeId}`);
+                        const data = await response.json();
+
+                        const container = document.getElementById('pendingChangesContent');
+
+                        if (!data.success || !data.pendingChanges || data.pendingChanges.length === 0) {
+                            container.innerHTML = '<div class="text-center text-gray-500 py-8"><i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i><p>No pending changes</p></div>';
+                            return;
+                        }
+
+                        let html = '';
+                        const changeTypeLabels = {
+                            'personal': 'Personal Information',
+                            'contact': 'Contact Details',
+                            'emergency': 'Emergency Contact',
+                            'government': 'Government IDs',
+                            'bank': 'Bank Information',
+                            'profile': 'Profile Photo'
+                        };
+
+                        data.pendingChanges.forEach(change => {
+                            const submittedDate = new Date(change.submittedAt).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                            });
+
+                            // Display changed data
+                            let changesHtml = '';
+                            if (change.changedData) {
+                                Object.entries(change.changedData).forEach(([key, value]) => {
+                                    const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                                    changesHtml += `
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-500">${displayKey}</span>
+                                            <span class="text-gray-900">${value || 'N/A'}</span>
+                                        </div>
+                                    `;
+                                });
+                            }
+
+                            html += `
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <span class="font-semibold text-gray-900">${changeTypeLabels[change.changeType] || change.changeType}</span>
+                                        <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Pending</span>
+                                    </div>
+                                    <div class="space-y-2 text-sm">
+                                        ${changesHtml}
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-3"><i class="fas fa-calendar mr-1"></i> Submitted: ${submittedDate}</p>
+                                </div>
+                            `;
+                        });
+
+                        container.innerHTML = html;
+                    } catch (error) {
+                        console.error('Error loading pending changes:', error);
+                        document.getElementById('pendingChangesContent').innerHTML = 
+                            '<div class="text-center text-red-500 py-8"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>Failed to load pending changes</p></div>';
+                    }
+                }
+            } else if (page === 'schedule') {
+                // Schedule page - Load employee shifts
+                loadEmployeeSchedule();
+
+                window.openSwapRequestModal = async function() {
+                    await loadShiftSwapData();
+                    document.getElementById('swapRequestModal').classList.remove('hidden');
+                };
+                window.closeSwapRequestModal = function() {
+                    document.getElementById('swapRequestModal').classList.add('hidden');
+                };
+                window.submitSwapRequest = async function() {
+                    const myShiftId = document.getElementById('myShiftSelect').value;
+                    const colleagueId = document.getElementById('colleagueSelect').value;
+                    const colleagueShiftId = document.getElementById('theirShiftSelect').value;
+                    const reason = document.getElementById('swapReason').value.trim();
+                    const employeeId = localStorage.getItem('employeeId');
+                    const loggedUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+
+                    if (!myShiftId || !colleagueId || !colleagueShiftId) {
+                        alert('Please fill in all required fields');
+                        return;
+                    }
+
+                    const myShift = shiftSwapData.myShiftMap[myShiftId];
+                    const colleagueShift = shiftSwapData.colleagueShiftMap[colleagueShiftId];
+                    if (!myShift || !colleagueShift) {
+                        alert('Shift details are missing. Please try again.');
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/api/employee/submit-shift-swap', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                employeeId,
+                                employeeName: loggedUser.name || '',
+                                colleagueId,
+                                colleagueName: shiftSwapData.employees.find(emp => emp.employeeId === colleagueId)?.fullName || '',
+                                myShiftId,
+                                myShiftDate: myShift.date,
+                                myShiftLabel: myShift.shift,
+                                myShiftDepartment: myShift.department || '',
+                                myShiftNotes: myShift.notes || '',
+                                colleagueShiftId,
+                                colleagueShiftDate: colleagueShift.date,
+                                colleagueShiftLabel: colleagueShift.shift,
+                                colleagueShiftDepartment: colleagueShift.department || '',
+                                colleagueShiftNotes: colleagueShift.notes || '',
+                                reason
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            closeSwapRequestModal();
+                            document.getElementById('swapSuccessModal').classList.remove('hidden');
+                        } else {
+                            alert('Error: ' + (data.message || 'Could not submit swap request'));
+                        }
+                    } catch (error) {
+                        console.error('Error submitting swap request:', error);
+                        alert('Failed to submit swap request');
+                    }
+                };
+                window.closeSwapSuccessModal = function() {
+                    document.getElementById('swapSuccessModal').classList.add('hidden');
+                    document.getElementById('myShiftSelect').value = '';
+                    document.getElementById('colleagueSelect').value = '';
+                    document.getElementById('theirShiftSelect').value = '';
+                    document.getElementById('swapReason').value = '';
+                };
+
+                const colleagueSelect = document.getElementById('colleagueSelect');
+                if (colleagueSelect) {
+                    colleagueSelect.addEventListener('change', function() {
+                        loadColleagueShifts(this.value);
+                    });
+                }
+
+                // Close modals on outside click
+                document.getElementById('swapRequestModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeSwapRequestModal();
+                });
+                document.getElementById('swapSuccessModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeSwapSuccessModal();
+                });
+            } else if (page === 'payroll') {
+                console.log('💰 Initializing payroll page...');
+                let allPayslips = [];
+                let currentPayslipData = null;
+
+                console.log('📅 Payroll page loaded, calling loadEmployeePayslips directly');
+                loadEmployeePayslips();
+
+                async function loadEmployeePayslips() {
+                    console.log('🔄 Starting loadEmployeePayslips...');
+    try {
+        const employeeId = localStorage.getItem('employeeId');
+        console.log('👤 Employee ID from localStorage:', employeeId);
+        
+        if (!employeeId) {
+            console.log('❌ No employee ID found, showing empty state');
+            showEmptyState();
+            return;
+        }
+
+        console.log('📡 Fetching payslips from:', `/api/payroll/employee-history/${employeeId}`);
+        const response = await fetch(`/api/payroll/employee-history/${employeeId}`);
+        console.log('📡 Response status:', response.status);
+        
+        const data = await response.json();
+        console.log('📦 Raw data received:', data);
+
+        if (!data.success || !data.payrolls || data.payrolls.length === 0) {
+            console.log('❌ No payslips found or error:', data.message || 'No data');
+            showEmptyState();
+            return;
+        }
+
+        console.log('✅ Found', data.payrolls.length, 'payslips');
+        allPayslips = data.payrolls;
+        
+        console.log('🔧 Calling populateYearFilter...');
+        populateYearFilter();
+        
+        console.log('🔧 Calling renderPayslips...');
+        renderPayslips(allPayslips);
+        
+        console.log('🔧 Calling updateYTDSummary...');
+        updateYTDSummary(allPayslips);
+        
+        console.log('🔧 Calling displayLatestPayslip...');
+        displayLatestPayslip(allPayslips[0]);
+
+        console.log('✅ Payslip loading completed successfully');
+
+    } catch (error) {
+        console.error('❌ Error loading payslips:', error);
+        showEmptyState();
+    }
+}
+
+function showEmptyState() {
+    const loadingEl = document.getElementById('payslipLoadingState');
+    const emptyEl = document.getElementById('payslipEmptyState');
+    const containerEl = document.getElementById('payslipListContainer');
+    
+    if (loadingEl) loadingEl.classList.add('hidden');
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    if (containerEl) containerEl.innerHTML = '';
+}
+
+function populateYearFilter() {
+    const years = new Set();
+    allPayslips.forEach(payslip => {
+        const year = payslip.month.split('-')[0];
+        years.add(year);
+    });
+
+    const yearFilter = document.getElementById('payslipYearFilter');
+    if (yearFilter) {
+        const sortedYears = Array.from(years).sort().reverse();
+        const allYearsOption = yearFilter.querySelector('option[value=""]');
+        yearFilter.innerHTML = '<option value="">All Years</option>';
+        sortedYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+        });
+    }
+}
+
+window.filterPayslipsByYear = function() {
+    const selectedYear = document.getElementById('payslipYearFilter').value;
+    let filtered = allPayslips;
+
+    if (selectedYear) {
+        filtered = allPayslips.filter(p => p.month.startsWith(selectedYear));
+    }
+
+    renderPayslips(filtered);
+};
+
+function renderPayslips(payslips) {
+    console.log('🎨 renderPayslips called with', payslips?.length || 0, 'payslips');
+    
+    const container = document.getElementById('payslipListContainer');
+    const loadingEl = document.getElementById('payslipLoadingState');
+    const emptyEl = document.getElementById('payslipEmptyState');
+
+    console.log('🔍 DOM elements found:', {
+        container: !!container,
+        loadingEl: !!loadingEl,
+        emptyEl: !!emptyEl
+    });
+
+    if (loadingEl) {
+        loadingEl.classList.add('hidden');
+        console.log('✅ Loading state hidden');
+    }
+
+    if (!payslips || payslips.length === 0) {
+        console.log('❌ No payslips to render, showing empty state');
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    console.log('✅ Rendering', payslips.length, 'payslips');
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    let html = '';
+    payslips.forEach((payslip, index) => {
+        console.log(`📄 Processing payslip ${index + 1}:`, payslip._id, payslip.month, payslip.period);
+        const record = payslip.employeeRecord;
+        const monthDate = new Date(payslip.month + '-01');
+        const monthName = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const periodLabel = payslip.period === '15th' ? '(1st - 15th)' : '(16th - End)';
+        const netPay = record.netPay || 0;
+
+        html += `
+            <div class="p-6 hover:bg-gray-50 transition cursor-pointer" onclick="openPayslipModal('${payslip._id}')">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-[#003D7A] p-3 rounded-lg">
+                            <i class="fas fa-file-invoice-dollar text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">${monthName} ${periodLabel}</p>
+                            <p class="text-sm text-gray-500">Generated on ${new Date(payslip.createdAt).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xl font-bold text-gray-900">₱${netPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        <span class="text-xs text-green-600 font-medium"><i class="fas fa-check-circle"></i> Available</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="event.stopPropagation(); openPayslipModal('${payslip._id}')" class="bg-[#003D7A] hover:bg-[#0052A3] text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                            <i class="fas fa-eye mr-1"></i> View
+                        </button>
+                        <button onclick="event.stopPropagation(); downloadPayslipPDF('${payslip._id}')" class="border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    console.log('📝 Generated HTML length:', html.length);
+    if (container) {
+        container.innerHTML = html;
+        console.log('✅ HTML set to container');
+    } else {
+        console.log('❌ Container not found!');
+    }
+}
+
+function displayLatestPayslip(payslip) {
+    if (!payslip || !payslip.employeeRecord) {
+        document.getElementById('latestPayslipContent').innerHTML = '<p class="text-gray-500">No payslips available</p>';
+        return;
+    }
+
+    const record = payslip.employeeRecord;
+    const earnings = record.allowances || 0;
+    const grossPay = (record.baseSalary || 0) + earnings;
+
+    let html = `
+        <p class="text-sm text-gray-500 mb-4">${payslip.month}</p>
+        <div class="space-y-4">
+            <div class="flex justify-between">
+                <span class="text-gray-600">Basic Salary</span>
+                <span class="font-medium text-gray-900">₱${(record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Allowances</span>
+                <span class="font-medium text-green-600">+₱${earnings.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <hr>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Gross Pay</span>
+                <span class="font-bold text-gray-900">₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <hr>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Withholding Tax</span>
+                <span class="font-medium text-red-600">-₱${(record.breakdown?.tax || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">SSS</span>
+                <span class="font-medium text-red-600">-₱${(record.breakdown?.sss || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">PhilHealth</span>
+                <span class="font-medium text-red-600">-₱${(record.breakdown?.philhealth || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Pag-IBIG</span>
+                <span class="font-medium text-red-600">-₱${(record.breakdown?.pagibig || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <hr>
+            <div class="flex justify-between">
+                <span class="text-gray-600 font-semibold">Total Deductions</span>
+                <span class="font-bold text-red-600">-₱${(record.deductions || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <hr>
+            <div class="flex justify-between bg-blue-50 p-3 rounded-lg -mx-3">
+                <span class="font-bold text-gray-900">Net Pay</span>
+                <span class="text-xl font-bold text-[#003D7A]">₱${(record.netPay || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+        </div>
+    `;
+    document.getElementById('latestPayslipContent').innerHTML = html;
+}
+
+function updateYTDSummary(payslips) {
+    let totalEarnings = 0;
+    let totalDeductions = 0;
+    let totalTax = 0;
+
+    payslips.forEach(payslip => {
+        if (payslip.employeeRecord) {
+            const record = payslip.employeeRecord;
+            totalEarnings += (record.baseSalary || 0) + (record.allowances || 0);
+            totalDeductions += record.deductions || 0;
+            totalTax += record.breakdown?.tax || 0;
+        }
+    });
+
+    const maxEarnings = totalEarnings * 1.2; // 120% for bar width calculation
+    const maxDeductions = totalDeductions * 1.2;
+
+    document.getElementById('ytdEarnings').textContent = `₱${totalEarnings.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('ytdDeductions').textContent = `₱${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('ytdTax').textContent = `₱${totalTax.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    document.getElementById('ytdEarningsBar').style.width = (totalEarnings / maxEarnings * 100) + '%';
+    document.getElementById('ytdDeductionsBar').style.width = (totalDeductions / maxDeductions * 100) + '%';
+}
+
+window.openPayslipModal = async function(payrollId) {
+    try {
+        const payslip = allPayslips.find(p => p._id === payrollId);
+        if (!payslip) return;
+
+        currentPayslipData = payslip;
+        const record = payslip.employeeRecord;
+        const monthDate = new Date(payslip.month + '-01');
+        const monthName = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const periodLabel = payslip.period === '15th' ? 'March 1 - 15' : 'March 16 - 31';
+
+        document.getElementById('payslipMonth').textContent = monthName + ' ' + (payslip.period === '15th' ? '(1st - 15th)' : '(16th - End)');
+        document.getElementById('modalPayPeriod').textContent = monthName;
+        document.getElementById('modalEmployeeName').textContent = record.fullName;
+        document.getElementById('modalEmployeeId').textContent = record.employeeId;
+        document.getElementById('modalPosition').textContent = record.position || 'N/A';
+        const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
+        const department = record.department || profile.department || profile.position || record.position || 'N/A';
+        document.getElementById('modalDepartment').textContent = department;
+        document.getElementById('modalNetPay').textContent = `₱${(record.netPay || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+        // Earnings
+        let earningsHtml = `
+            <div class="flex justify-between">
+                <span class="text-gray-600">Basic Salary</span>
+                <span class="font-medium">₱${(record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+        `;
+
+        if (record.breakdown?.housing) {
+            earningsHtml += `
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Housing Allowance</span>
+                    <span class="font-medium">₱${record.breakdown.housing.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+            `;
+        }
+        if (record.breakdown?.travel) {
+            earningsHtml += `
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Travel Allowance</span>
+                    <span class="font-medium">₱${record.breakdown.travel.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+            `;
+        }
+        if (record.breakdown?.meal) {
+            earningsHtml += `
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Meal Allowance</span>
+                    <span class="font-medium">₱${record.breakdown.meal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+            `;
+        }
+
+        const grossPay = (record.baseSalary || 0) + (record.allowances || 0);
+        earningsHtml += `
+            <div class="flex justify-between border-t pt-3 mt-3">
+                <span class="font-bold text-gray-900">Gross Pay</span>
+                <span class="font-bold text-gray-900">₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+        `;
+
+        // Deductions
+        let deductionsHtml = `
+            <div class="flex justify-between">
+                <span class="text-gray-600">Withholding Tax</span>
+                <span class="font-medium text-red-600">₱${(record.breakdown?.tax || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">SSS Contribution</span>
+                <span class="font-medium text-red-600">₱${(record.breakdown?.sss || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">PhilHealth</span>
+                <span class="font-medium text-red-600">₱${(record.breakdown?.philhealth || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Pag-IBIG</span>
+                <span class="font-medium text-red-600">₱${(record.breakdown?.pagibig || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="flex justify-between border-t pt-3 mt-3">
+                <span class="font-bold text-gray-900">Total Deductions</span>
+                <span class="font-bold text-red-600">₱${(record.deductions || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+        `;
+
+        document.getElementById('modalEarningsContent').innerHTML = earningsHtml;
+        document.getElementById('modalDeductionsContent').innerHTML = deductionsHtml;
+
+        document.getElementById('payslipModal').classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Error opening payslip modal:', error);
+        alert('Error loading payslip details');
+    }
+}
+
+window.closePayslipModal = function() {
+    document.getElementById('payslipModal').classList.add('hidden');
+};
+
+window.printPayslip = function() {
+    window.print();
+};
+
+async function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+}
+
+async function ensurePdfFont(doc) {
+    if (window.pdfPesoFontLoaded) return true;
+    if (!doc.addFileToVFS || !doc.addFont) return false;
+
+    try {
+        const fontUrl = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf';
+        const response = await fetch(fontUrl);
+        if (!response.ok) throw new Error('Font fetch failed');
+
+        const buffer = await response.arrayBuffer();
+        const fontData = await arrayBufferToBase64(buffer);
+        doc.addFileToVFS('Roboto-Regular.ttf', fontData);
+        doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+        window.pdfPesoFontLoaded = true;
+        return true;
+    } catch (error) {
+        console.warn('Unable to load PDF font, falling back to ASCII currency:', error);
+        return false;
+    }
+}
+
+function formatPdfCurrency(amount, usePesoSymbol) {
+    const formatted = amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return usePesoSymbol ? `₱${formatted}` : `P ${formatted}`;
+}
+
+window.downloadCurrentPayslip = async function() {
+    if (!currentPayslipData) return;
+    
+    const jsPDFConstructor = window.jspdf?.jsPDF || window.jsPDF;
+    if (!jsPDFConstructor) {
+        console.error('jsPDF not loaded. Please ensure the jsPDF library is included before this script.');
+        alert('PDF generation library is not loaded. Please refresh the page.');
+        return;
+    }
+
+    const doc = new jsPDFConstructor();
+    const fontLoaded = await ensurePdfFont(doc);
+    if (fontLoaded) {
+        doc.setFont('Roboto', 'normal');
+    }
+
+    const record = currentPayslipData.employeeRecord;
+    const pesoSymbol = fontLoaded;
+
+    doc.setFontSize(16);
+    doc.setTextColor(0, 61, 122);
+    doc.text('ZEAL COMMUNITY MEDICAL MISSION FOUNDATION', 105, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Payslip: ${currentPayslipData.month}`, 105, 22, { align: 'center' });
+
+    doc.autoTable({
+        startY: 30,
+        body: [
+            ['Employee Name:', record.fullName, 'Employee ID:', record.employeeId],
+            ['Position:', record.position || 'N/A', 'Period:', currentPayslipData.period],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 2, font: fontLoaded ? 'Roboto' : 'helvetica' }
+    });
+
+    const grossPay = (record.baseSalary || 0) + (record.allowances || 0);
+    doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Earnings', 'Amount', 'Deductions', 'Amount']],
+        body: [
+            ['Basic Salary', formatPdfCurrency(record.baseSalary || 0, pesoSymbol), 'Tax', formatPdfCurrency(record.breakdown?.tax || 0, pesoSymbol)],
+            ['Allowances', formatPdfCurrency(record.allowances || 0, pesoSymbol), 'SSS', formatPdfCurrency(record.breakdown?.sss || 0, pesoSymbol)],
+            ['', '', 'PhilHealth', formatPdfCurrency(record.breakdown?.philhealth || 0, pesoSymbol)],
+            ['', '', 'Pag-IBIG', formatPdfCurrency(record.breakdown?.pagibig || 0, pesoSymbol)],
+        ],
+        foot: [['Total Gross', formatPdfCurrency(grossPay, pesoSymbol), 'Total Deduct', formatPdfCurrency(record.deductions || 0, pesoSymbol)]],
+        headStyles: { fillColor: [0, 61, 122] },
+        footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+        styles: { font: fontLoaded ? 'Roboto' : 'helvetica' }
+    });
+
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    if (fontLoaded) {
+        doc.text(`NET PAY: ₱${(record.netPay || 0).toLocaleString('en-PH')}`, 190, doc.lastAutoTable.finalY + 15, { align: 'right' });
+    } else {
+        doc.text(`NET PAY: P ${(record.netPay || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, doc.lastAutoTable.finalY + 15, { align: 'right' });
+    }
+
+    const fileName = `Payslip_${record.fullName.replace(/\s+/g, '_')}_${currentPayslipData.month}.pdf`;
+    doc.save(fileName);
+
+    document.getElementById('downloadMonth').textContent = currentPayslipData.month;
+    document.getElementById('downloadSuccessModal').classList.remove('hidden');
+};
+
+window.downloadPayslipPDF = function(payrollId) {
+    const payslip = allPayslips.find(p => p._id === payrollId);
+    if (payslip) {
+        currentPayslipData = payslip;
+        downloadCurrentPayslip();
+    }
+};
+
+window.closeDownloadSuccessModal = function() {
+    document.getElementById('downloadSuccessModal').classList.add('hidden');
+};
+
+            } else if (page === 'dashboard') {
+                // Dashboard - Load pending changes
+                loadPendingChanges();
+            } else if (page === 'leave') {
+                let uploadedFiles = [];
+                let employeeShifts = [];
+                let leaveBalance = { used: 0, total: 15, remaining: 15 };
+    const maxFileSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+
+    // Initialize page
+    loadEmployeeShifts();
+    loadLeaveBalance();
+    loadLeaveHistory();
+
+    // Drag and drop functionality
+    const dropZone = document.getElementById('dropZone');
+
+    if (dropZone) {
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('border-[#003D7A]', 'bg-blue-50');
+        });
+
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('border-[#003D7A]', 'bg-blue-50');
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('border-[#003D7A]', 'bg-blue-50');
+
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+    }
+
+    const leaveForm = document.getElementById('leaveForm');
+    if (leaveForm) {
+        leaveForm.addEventListener('submit', submitLeaveRequest);
+    }
+
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+
+    async function loadEmployeeShifts() {
+        const employeeId = localStorage.getItem('employeeId');
+        if (!employeeId) {
+            console.error('No employee ID found');
+            return;
+        }
+
+        try {
+            // Get current month and year
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+            const currentYear = currentDate.getFullYear();
+
+            const response = await fetch(`/api/shifts/employee/${employeeId}?month=${currentMonth}&year=${currentYear}`);
+            const data = await response.json();
+
+            if (data.success && data.shifts) {
+                employeeShifts = data.shifts;
+                console.log('Loaded shifts:', employeeShifts);
+                populateDateDropdowns();
+            } else {
+                console.log('No shifts found for current month');
+                populateDateDropdowns(); // Still call to show empty dropdowns
+            }
+        } catch (error) {
+            console.error('Error loading employee shifts:', error);
+            populateDateDropdowns(); // Still call to show empty dropdowns
+        }
+    }
+
+    async function loadLeaveBalance() {
+        const employeeId = localStorage.getItem('employeeId');
+        if (!employeeId) {
+            console.error('No employee ID found');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/employee/leave-balance/${employeeId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                leaveBalance = {
+                    used: data.balance?.used ?? 0,
+                    total: data.balance?.total ?? 15,
+                    remaining: data.balance?.remaining ?? ((data.balance?.total ?? 15) - (data.balance?.used ?? 0))
+                };
+                console.log('Loaded leave balance:', leaveBalance);
+                updateLeaveBalanceDisplay();
+                updateSidebarLeaveBalance();
+            } else {
+                console.error('Failed to load leave balance:', data);
+            }
+        } catch (error) {
+            console.error('Error loading leave balance:', error);
+        }
+    }
+
+    async function loadLeaveHistory() {
+        const employeeId = localStorage.getItem('employeeId');
+        if (!employeeId) {
+            console.error('No employee ID found');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/employee/leave-requests/${employeeId}`);
+            const data = await response.json();
+
+            if (data.success && data.requests) {
+                console.log('Loaded leave history:', data.requests);
+                renderLeaveHistory(data.requests);
+            } else {
+                console.log('No leave history found');
+                renderLeaveHistory([]);
+            }
+        } catch (error) {
+            console.error('Error loading leave history:', error);
+            renderLeaveHistory([]);
+        }
+    }
+
+    function renderLeaveHistory(requests) {
+        const historyContainer = document.querySelector('.divide-y.divide-gray-200');
+        if (!historyContainer) {
+            console.error('Leave history container not found');
+            return;
+        }
+
+        if (!requests || requests.length === 0) {
+            historyContainer.innerHTML = `
+                <div class="p-6 text-center text-gray-500">
+                    <i class="fas fa-calendar-times text-3xl mb-2"></i>
+                    <p>No leave requests found</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Sort requests by submitted date (newest first)
+        requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+        const html = requests.map(request => {
+            const startDate = new Date(request.startDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            const endDate = new Date(request.endDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+
+            const submittedDate = new Date(request.submittedAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+
+            // Calculate duration
+            const start = new Date(request.startDate);
+            const end = new Date(request.endDate);
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            const durationText = request.duration === 'full' ? `${days} day${days > 1 ? 's' : ''}` :
+                               request.duration === 'half-am' ? 'Half Day (AM)' :
+                               request.duration === 'half-pm' ? 'Half Day (PM)' : `${days} day${days > 1 ? 's' : ''}`;
+
+            // Status styling
+            let statusClass = '';
+            let statusIcon = '';
+            let statusColor = '';
+
+            switch (request.status) {
+                case 'pending':
+                    statusClass = 'bg-yellow-100 text-yellow-700';
+                    statusIcon = 'fa-hourglass-half';
+                    statusColor = 'text-yellow-600';
+                    break;
+                case 'approved':
+                    statusClass = 'bg-green-100 text-green-700';
+                    statusIcon = 'fa-check-circle';
+                    statusColor = 'text-green-600';
+                    break;
+                case 'rejected':
+                    statusClass = 'bg-red-100 text-red-700';
+                    statusIcon = 'fa-times-circle';
+                    statusColor = 'text-red-600';
+                    break;
+                default:
+                    statusClass = 'bg-gray-100 text-gray-700';
+                    statusIcon = 'fa-question-circle';
+                    statusColor = 'text-gray-600';
+            }
+
+            const approvedByText = request.status === 'approved' && request.approvedBy ?
+                `Approved by: ${request.approvedBy}` :
+                request.status === 'rejected' && request.rejectionReason ?
+                `Reason: ${request.rejectionReason}` :
+                `Submitted: ${submittedDate}`;
+
+            return `
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="bg-${statusColor.split('-')[1]}-100 p-3 rounded-lg">
+                                <i class="fas ${statusIcon} ${statusColor} text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-900">${request.leaveType.charAt(0).toUpperCase() + request.leaveType.slice(1)} Leave</p>
+                                <p class="text-sm text-gray-500">${startDate} - ${endDate} (${durationText})</p>
+                                <p class="text-xs text-gray-400 mt-1">${approvedByText}</p>
+                            </div>
+                        </div>
+                        <span class="${statusClass} px-3 py-1 rounded-full text-xs font-medium">${request.status.charAt(0).toUpperCase() + request.status.slice(1)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        historyContainer.innerHTML = html;
+    }
+
+    function updateLeaveBalanceDisplay() {
+        const remaining = leaveBalance.remaining ?? (leaveBalance.total - leaveBalance.used);
+        const percentage = leaveBalance.total > 0 ? (leaveBalance.used / leaveBalance.total) * 100 : 0;
+
+        // Update form leave balance
+        const totalBalanceEl = document.getElementById('totalLeaveBalance');
+        const remainingDaysEl = document.getElementById('remainingDays');
+        const progressBarEl = document.getElementById('leaveProgressBar');
+
+        if (totalBalanceEl) totalBalanceEl.textContent = remaining;
+        if (remainingDaysEl) remainingDaysEl.textContent = remaining;
+        if (progressBarEl) progressBarEl.style.width = percentage + '%';
+    }
+
+    function updateSidebarLeaveBalance() {
+        const sidebarContainer = document.getElementById('leaveBalanceDetails');
+        const sidebarTotal = document.getElementById('sidebarTotalAvailable');
+
+        if (!sidebarContainer) {
+            console.error('Sidebar leave balance container not found');
+            return;
+        }
+
+        const remaining = leaveBalance.remaining ?? (leaveBalance.total - leaveBalance.used);
+        const percentage = leaveBalance.total > 0 ? (leaveBalance.used / leaveBalance.total) * 100 : 0;
+
+        // Update sidebar total
+        if (sidebarTotal) {
+            sidebarTotal.textContent = `${remaining}/${leaveBalance.total} days`;
+        }
+
+        // Create detailed breakdown (simplified - showing total used vs remaining)
+        const html = `
+            <div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600 text-sm">Total Leave Used</span>
+                    <span class="font-bold text-gray-900">${leaveBalance.used}/${leaveBalance.total} days</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: ${percentage}%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">${remaining} days remaining this year</p>
+            </div>
+        `;
+
+        sidebarContainer.innerHTML = html;
+    }
+
+    function populateDateDropdowns() {
+        const startDateSelect = document.getElementById('startDate');
+        const endDateSelect = document.getElementById('endDate');
+
+        console.log('Populating date dropdowns...');
+
+        if (!startDateSelect || !endDateSelect) {
+            console.error('Date dropdown elements not found');
+            return;
+        }
+
+        // Clear existing options
+        startDateSelect.innerHTML = '<option value="">Select start date</option>';
+        endDateSelect.innerHTML = '<option value="">Select end date</option>';
+
+        // Get current month dates
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+        // Create a set of shift dates for quick lookup
+        const shiftDates = new Set();
+        employeeShifts.forEach(shift => {
+            const shiftDate = new Date(shift.date);
+            if (shiftDate.getMonth() === currentMonth && shiftDate.getFullYear() === currentYear) {
+                const dateString = shiftDate.toISOString().split('T')[0];
+                shiftDates.add(dateString);
+            }
+        });
+
+        console.log('Shift dates for current month:', Array.from(shiftDates));
+
+        // Populate dropdowns with all dates in current month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(currentYear, currentMonth, day);
+            const dateString = date.toISOString().split('T')[0];
+            const displayText = date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+
+            // Add indicator for shift days
+            const hasShift = shiftDates.has(dateString);
+            const displayTextWithIndicator = hasShift ? `${displayText} (Shift)` : displayText;
+
+            const startOption = new Option(displayTextWithIndicator, dateString);
+            const endOption = new Option(displayTextWithIndicator, dateString);
+
+            // Style shift days differently
+            if (hasShift) {
+                startOption.style.fontWeight = 'bold';
+                startOption.style.color = '#059669'; // Green color for shift days
+                endOption.style.fontWeight = 'bold';
+                endOption.style.color = '#059669';
+            }
+
+            startDateSelect.appendChild(startOption);
+            endDateSelect.appendChild(endOption);
+        }
+
+        console.log('Date dropdowns populated with', daysInMonth, 'days');
+    }
+
+    // Update end date options based on start date selection
+    const startDateSelect = document.getElementById('startDate');
+    if (startDateSelect) {
+        startDateSelect.addEventListener('change', function() {
+            const startDate = this.value;
+            const endDateSelect = document.getElementById('endDate');
+
+            if (!startDate) {
+                populateDateDropdowns();
+                return;
+            }
+
+        // Filter end date options to be on or after start date
+        const startDateObj = new Date(startDate);
+        const options = endDateSelect.querySelectorAll('option');
+
+        options.forEach(option => {
+            if (option.value) {
+                const optionDate = new Date(option.value);
+                option.style.display = optionDate >= startDateObj ? 'block' : 'none';
+            }
+        });
+
+        // Reset end date if it's before start date
+        const currentEndDate = endDateSelect.value;
+        if (currentEndDate && new Date(currentEndDate) < startDateObj) {
+            endDateSelect.value = '';
+        }
+    });
+
+    function handleFileSelect(event) {
+        const files = event.target.files;
+        handleFiles(files);
+    }
+
+    function handleFiles(files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Validate file type
+            if (!allowedTypes.includes(file.type)) {
+                alert(`Invalid file type: ${file.name}. Only PDF, JPG, and PNG are allowed.`);
+                continue;
+            }
+            
+            // Validate file size
+            if (file.size > maxFileSize) {
+                alert(`File too large: ${file.name}. Maximum size is 5MB.`);
+                continue;
+            }
+            
+            // Check for duplicates
+            if (uploadedFiles.some(f => f.name === file.name)) {
+                alert(`File already added: ${file.name}`);
+                continue;
+            }
+            
+            uploadedFiles.push(file);
+        }
+        
+        updateFileList();
+    }
+
+    function updateFileList() {
+        const fileList = document.getElementById('fileList');
+        
+        if (uploadedFiles.length === 0) {
+            fileList.classList.add('hidden');
+            return;
+        }
+        
+        fileList.classList.remove('hidden');
+        fileList.innerHTML = uploadedFiles.map((file, index) => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <i class="fas ${getFileIcon(file.type)} text-[#003D7A]"></i>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">${file.name}</p>
+                        <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+                    </div>
+                </div>
+                <button type="button" onclick="removeFile(${index})" class="text-red-500 hover:text-red-700 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function getFileIcon(type) {
+        if (type === 'application/pdf') return 'fa-file-pdf';
+        if (type.startsWith('image/')) return 'fa-file-image';
+        return 'fa-file';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function removeFile(index) {
+        uploadedFiles.splice(index, 1);
+        updateFileList();
+    }
+
+    function submitLeaveRequest(event) {
+        event.preventDefault();
+        
+        const formData = new FormData();
+        const employeeId = localStorage.getItem('employeeId');
+        
+        if (!employeeId) {
+            alert('Employee ID not found. Please log in again.');
+            return;
+        }
+
+        // Get form values
+        const leaveType = document.querySelector('select[name="leaveType"]').value;
+        const duration = document.querySelector('select[name="duration"]').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const reason = document.querySelector('textarea[name="reason"]').value;
+
+        // Validate required fields
+        if (!leaveType || !duration || !startDate || !endDate || !reason.trim()) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        // Validate dates
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (start < today) {
+            alert('Start date cannot be in the past.');
+            return;
+        }
+
+        if (end < start) {
+            alert('End date cannot be before start date.');
+            return;
+        }
+
+        // Calculate leave days
+        const leaveDays = calculateLeaveDays(start, end, duration);
+        
+        // Check leave balance
+        if (leaveBalance.used + leaveDays > leaveBalance.total) {
+            alert(`Insufficient leave balance. You have ${leaveBalance.total - leaveBalance.used} days remaining, but this request requires ${leaveDays} days.`);
+            return;
+        }
+
+        // Validate that dates are within current month
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        if (start.getMonth() !== currentMonth || start.getFullYear() !== currentYear ||
+            end.getMonth() !== currentMonth || end.getFullYear() !== currentYear) {
+            alert('Leave requests can only be made for the current month.');
+            return;
+        }
+
+        // Optional: Check if any selected dates have shifts (suggestion, not restriction)
+        const selectedDates = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            selectedDates.push(d.toISOString().split('T')[0]);
+        }
+        
+        const shiftDates = employeeShifts.map(shift => new Date(shift.date).toISOString().split('T')[0]);
+        const datesWithShifts = selectedDates.filter(date => shiftDates.includes(date));
+        
+        if (datesWithShifts.length === 0) {
+            const proceed = confirm(`Warning: None of the selected dates (${startDate} to ${endDate}) have scheduled shifts. Are you sure you want to proceed?`);
+            if (!proceed) return;
+        }
+
+        // Add form data
+        formData.append('employeeId', employeeId);
+        formData.append('leaveType', leaveType);
+        formData.append('duration', duration);
+        formData.append('startDate', startDate);
+        formData.append('endDate', endDate);
+        formData.append('reason', reason.trim());
+        formData.append('leaveDays', leaveDays);
+
+        // Add file attachments if any
+        uploadedFiles.forEach(file => {
+            formData.append('attachments', file);
+        });
+
+        // Show loading state
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        // Submit the request
+        fetch('/api/employee/submit-leave-request', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success modal
+                document.getElementById('leaveSuccessModal').classList.remove('hidden');
+                // Reset form
+                document.getElementById('leaveForm').reset();
+                uploadedFiles = [];
+                updateFileList();
+                // Reload leave balance
+                loadLeaveBalance();
+            } else {
+                alert('Error: ' + (data.message || 'Failed to submit leave request'));
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting leave request:', error);
+            alert('Failed to submit leave request. Please try again.');
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    }
+
+    function calculateLeaveDays(startDate, endDate, duration) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        
+        if (duration === 'half-am' || duration === 'half-pm') {
+            return 0.5;
+        }
+        return days;
+    }
+
+    function closeLeaveSuccessModal() {
+        document.getElementById('leaveSuccessModal').classList.add('hidden');
+        // Reset form
+        uploadedFiles = [];
+        updateFileList();
+        document.querySelector('form').reset();
+        // Reload leave balance, shifts, and history
+        loadLeaveBalance();
+        loadEmployeeShifts();
+        loadLeaveHistory();
+    }
+
+    // Expose leave page handlers globally for inline page event bindings
+    window.submitLeaveRequest = submitLeaveRequest;
+    window.handleFileSelect = handleFileSelect;
+    window.removeFile = removeFile;
+    window.closeLeaveSuccessModal = closeLeaveSuccessModal;
+            }  
+                
+           } else if (page === 'attendance') {
+                console.log('🔄 Initializing attendance page...');
+
+                // Populate month selector with recent months
+                const monthSelect = document.querySelector('select');
+                monthSelect.innerHTML = '';
+                const currentDate = new Date();
+                for (let i = 0; i < 6; i++) {
+                    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+                    const monthName = date.toLocaleString('default', { month: 'long' });
+                    const year = date.getFullYear();
+                    const value = `${monthName} ${year}`;
+                    const option = new Option(value, value);
+                    monthSelect.appendChild(option);
+                }
+                // Set default to current month
+                monthSelect.value = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
+
+                // Time Correction Modal - Load attendance records first
+                window.openTimeCorrectionModal = async function() {
+                    console.log('📅 Opening time correction modal...');
+                    await loadAttendanceRecordsForCorrection();
+                    document.getElementById('timeCorrectionModal').classList.remove('hidden');
+                };
+                window.closeTimeCorrectionModal = function() {
+                    document.getElementById('timeCorrectionModal').classList.add('hidden');
+                    document.getElementById('timeCorrectionForm')?.reset();
+                    document.getElementById('attendanceRecordSelect').innerHTML = '<option value="">Select attendance record...</option>';
+                };
+
+                // Load attendance records for the current month to populate correction dropdown
+                async function loadAttendanceRecordsForCorrection() {
+                    console.log('📊 Loading attendance records for correction...');
+                    const employeeId = localStorage.getItem('employeeId');
+                    if (!employeeId) return;
+
+                    const monthText = monthSelect.value; // e.g., "April 2026"
+                    const [monthName, year] = monthText.split(' ');
+                    const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
+                    const monthParam = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+                    try {
+                        const response = await fetch(`/api/employee/attendance?employeeId=${employeeId}&month=${monthParam}&page=1&limit=1000`);
+                        const data = await response.json();
+                        console.log('📊 Attendance records loaded:', data.attendance?.length || 0, 'records');
+
+                        const select = document.getElementById('attendanceRecordSelect');
+                        select.innerHTML = '<option value="">Select attendance record...</option>';
+
+                        if (data.success && data.attendance.length > 0) {
+                            data.attendance.forEach(record => {
+                                const dateStr = new Date(record.date).toLocaleDateString('en-US', { 
+                                    weekday: 'short', 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                });
+                                const isAbsent = record.status === 'Absent';
+                                const statusBadge = isAbsent ? '❌ ABSENT' : `✓ ${record.status || 'Unknown'}`;
+                                const displayText = `${dateStr} - In: ${record.checkIn || 'N/A'} - Out: ${record.checkOut || 'N/A'} - ${statusBadge}`;
+                                const option = new Option(displayText, record._id);
+                                option.dataset.record = JSON.stringify(record);
+                                option.dataset.isAbsent = isAbsent;
+                                option.disabled = isAbsent;
+                                select.appendChild(option);
+                            });
+                        } else {
+                            select.innerHTML += '<option value="" disabled>No attendance records found for this month</option>';
+                        }
+                    } catch (error) {
+                        console.error('❌ Error loading attendance records for correction:', error);
+                    }
+                }
+
+                // When attendance record is selected, populate the form and check for absent
+                document.getElementById('attendanceRecordSelect').addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const record = selectedOption.dataset.record ? JSON.parse(selectedOption.dataset.record) : null;
+                    const isAbsent = selectedOption.dataset.isAbsent === 'true';
+
+                    if (record && !isAbsent) {
+                        console.log('📝 Populating form with selected record:', record);
+                        document.getElementById('correctionDate').value = record.date;
+                        document.getElementById('correctClockIn').value = record.checkIn ? record.checkIn.split(' ')[0] : '';
+                        document.getElementById('correctClockOut').value = record.checkOut ? record.checkOut.split(' ')[0] : '';
+                    } else if (record && isAbsent) {
+                        console.warn('⚠️ User tried to select an absent day');
+                        const dateStr = new Date(record.date).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            month: 'long', 
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
+                        alert(`❌ Cannot Request Time Correction\n\nYou were absent on ${dateStr}. Time corrections can only be made for days when you have attendance records.\n\nPlease select a different date.`);
+                        this.value = '';
+                        document.getElementById('correctionDate').value = '';
+                        document.getElementById('correctClockIn').value = '';
+                        document.getElementById('correctClockOut').value = '';
+                    } else {
+                        document.getElementById('correctionDate').value = '';
+                        document.getElementById('correctClockIn').value = '';
+                        document.getElementById('correctClockOut').value = '';
+                    }
+                });
+
+                window.submitTimeCorrection = function() {
+                    const recordSelect = document.getElementById('attendanceRecordSelect');
+                    const selectedOption = recordSelect.options[recordSelect.selectedIndex];
+                    const recordId = recordSelect.value;
+                    const date = document.getElementById('correctionDate').value;
+                    const type = document.getElementById('correctionType').value;
+                    const correctClockIn = document.getElementById('correctClockIn').value;
+                    const correctClockOut = document.getElementById('correctClockOut').value;
+                    const reason = document.getElementById('correctionReason').value;
+                    const isAbsent = selectedOption && selectedOption.dataset.isAbsent === 'true';
+
+                    console.log('📤 Submitting time correction:', { recordId, date, type, correctClockIn, correctClockOut, reason, isAbsent });
+
+                    if (!recordId || !date || !type || !reason) {
+                        alert('Please select an attendance record and fill in all required fields');
+                        return;
+                    }
+
+                    if (isAbsent) {
+                        alert('❌ Cannot Submit Time Correction for Absent Day\n\nYou cannot request a time correction for a day you were marked as absent. Please select a different date with actual attendance records.');
+                        return;
+                    }
+
+                    const employeeId = localStorage.getItem('employeeId');
+                    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+                    const employeeName = loggedInUser.name || 'Unknown';
+
+                    fetch('/api/employee/submit-time-correction', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            employeeId,
+                            employeeName,
+                            date,
+                            correctionType: type,
+                            correctClockIn,
+                            correctClockOut,
+                            reason,
+                            recordId // Include the record ID for reference
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('📤 Time correction response:', data);
+                        if (data.success) {
+                            closeTimeCorrectionModal();
+                            showAttendanceSuccess('Time Correction Submitted!', 'Your time correction request has been submitted and is awaiting supervisor approval.');
+                        } else {
+                            alert('Failed to submit request: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error submitting time correction:', error);
+                        alert('Failed to submit request. Please try again.');
+                    });
+                };
+
+              
+                // DTR Download
+                window.downloadDTR = function() {
+                    console.log('📋 Opening DTR Modal');
+                    // Populate period dropdown with recent months (only if not already populated)
+                    const dtrPeriod = document.getElementById('dtrPeriod');
+                    if (dtrPeriod) {
+                        // Check if we only have the placeholder option
+                        if (dtrPeriod.children.length === 1 && dtrPeriod.children[0].value === '') {
+                            console.log('📅 Populating DTR period dropdown');
+                            const today = new Date();
+                            for (let i = 5; i >= 0; i--) {
+                                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                                const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                                const monthValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                                const option = document.createElement('option');
+                                option.value = monthValue;
+                                option.textContent = monthName;
+                                if (i === 0) option.selected = true;
+                                dtrPeriod.appendChild(option);
+                            }
+                            // Remove the placeholder
+                            dtrPeriod.removeChild(dtrPeriod.children[0]);
+                        }
+                    }
+                    document.getElementById('dtrModal').classList.remove('hidden');
+                };
+                window.closeDTRModal = function() {
+                    console.log('❌ Closing DTR Modal');
+                    document.getElementById('dtrModal').classList.add('hidden');
+                };
+                window.confirmDownloadDTR = async function() {
+                    const period = document.getElementById('dtrPeriod').value;
+                    const format = document.querySelector('input[name="dtrFormat"]:checked').value;
+                    const employeeId = localStorage.getItem('employeeId');
+                    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+                    const employeeName = loggedInUser.name || 'Employee';
+
+                    console.log('📥 Downloading DTR:', { period, format, employeeId, employeeName });
+
+                    closeDTRModal();
+
+                    try {
+                        const response = await fetch(`/api/employee/attendance?employeeId=${employeeId}&month=${period}&page=1&limit=1000`);
+                        const data = await response.json();
+
+                        console.log('📊 DTR Data received:', { success: data.success, recordCount: data.attendance?.length || 0 });
+
+                        if (data.success && data.attendance.length > 0) {
+                            if (format === 'pdf') {
+                                generatePDF(data.attendance, employeeName, period);
+                            } else {
+                                generateExcel(data.attendance, employeeName, period);
+                            }
+                            const periodDisplay = new Date(`${period}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                            showAttendanceSuccess('✅ Download Completed!', `Your DTR for ${periodDisplay} has been downloaded as ${format.toUpperCase()}.`);
+                        } else {
+                            showAttendanceSuccess('⚠️ No Data!', `No attendance records found for ${period}.`);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error downloading DTR:', error);
+                        showAttendanceSuccess('❌ Download Failed!', 'Failed to download DTR. Please try again.');
+                    }
+                };
+
+                window.generatePDF = function(attendance, employeeName, period) {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    doc.text(`Daily Time Record - ${employeeName}`, 14, 15);
+                    doc.text(`Period: ${period.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}`, 14, 25);
+
+                    const tableData = attendance.map(record => [
+                        record.date,
+                        record.checkIn || '--:--',
+                        record.checkOut || '--:--',
+                        record.duration || '0h 0m',
+                        record.status || 'Unknown'
+                    ]);
+
+                    doc.autoTable({
+                        head: [['Date', 'Clock In', 'Clock Out', 'Hours', 'Status']],
+                        body: tableData,
+                        startY: 35
+                    });
+
+                    doc.save(`DTR_${employeeName}_${period}.pdf`);
+                }
+
+                window.generateExcel = function(attendance, employeeName, period) {
+                    const data = attendance.map(record => ({
+                        Date: record.date,
+                        'Clock In': record.checkIn || '--:--',
+                        'Clock Out': record.checkOut || '--:--',
+                        Hours: record.duration || '0h 0m',
+                        Status: record.status || 'Unknown'
+                    }));
+
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'DTR');
+                    XLSX.writeFile(wb, `DTR_${employeeName}_${period}.xlsx`);
+                };
+
+                // Success Modal
+                window.showAttendanceSuccess = function(title, message) {
+                    document.getElementById('successTitle').textContent = title;
+                    document.getElementById('successMessage').textContent = message;
+                    document.getElementById('attendanceSuccessModal').classList.remove('hidden');
+                };
+                window.closeAttendanceSuccessModal = function() {
+                    document.getElementById('attendanceSuccessModal').classList.add('hidden');
+                };
+
+                // Close modals on outside click
+                document.getElementById('timeCorrectionModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeTimeCorrectionModal();
+                });
+                document.getElementById('dtrModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeDTRModal();
+                });
+                document.getElementById('attendanceSuccessModal')?.addEventListener('click', function(e) {
+                    if (e.target === this) closeAttendanceSuccessModal();
+                });
+
+                // Load attendance data
+                let currentPage = 1;
+                const itemsPerPage = 15;
+
+                async function loadAttendance(page = 1) {
+                    console.log('🔄 Loading attendance data, page:', page);
+                    currentPage = page;
+                    const employeeId = localStorage.getItem('employeeId');
+                    if (!employeeId) {
+                        console.error('❌ No employee ID found');
+                        return;
+                    }
+
+                    const monthSelect = document.getElementById('attendanceMonthSelect');
+                    if (!monthSelect) {
+                        console.error('❌ Attendance month selector not found');
+                        return;
+                    }
+                    const monthText = monthSelect.value; // e.g., "April 2026"
+                    const [monthName, year] = monthText.split(' ');
+                    const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
+                    const monthParam = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+                    console.log('📅 Selected month:', monthText, '->', monthParam);
+
+                    try {
+                        const response = await fetch(`/api/employee/attendance?employeeId=${employeeId}&month=${monthParam}&page=${page}&limit=${itemsPerPage}`);
+                        const text = await response.text();
+                        let data;
+                        try {
+                            data = JSON.parse(text);
+                        } catch (parseError) {
+                            console.error('❌ Attendance API returned invalid JSON:', text);
+                            throw parseError;
+                        }
+                        console.log('📊 Attendance data received:', data.success ? `${data.attendance.length} records` : 'Failed');
+                        if (data.success) {
+                            populateAttendanceTable(data.attendance);
+                            updatePagination(data.totalPages, data.currentPage, data.totalRecords);
+                            updateAttendanceSummary(data.summary, monthText);
+                        } else {
+                            console.error('❌ Failed to load attendance:', data.message);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error loading attendance:', error);
+                    }
+                }
+
+                window.loadAttendance = loadAttendance;
+
+                window.populateAttendanceTable = function(attendance) {
+                    console.log('📋 Populating attendance table with', attendance.length, 'records');
+                    const tbody = document.getElementById('attendanceTableBody');
+                    if (!tbody) {
+                        console.error('❌ Attendance table body not found');
+                        return;
+                    }
+                    tbody.innerHTML = attendance.map(record => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <p class="font-medium text-gray-900">${new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                                <p class="text-xs text-gray-500">${record.date === new Date().toISOString().split('T')[0] ? 'Today' : ''}</p>
+                            </td>
+                            <td class="px-6 py-4 text-gray-900">${record.checkIn || '--:-- --'}</td>
+                            <td class="px-6 py-4 text-gray-900">${record.checkOut || '--:-- --'}</td>
+                            <td class="px-6 py-4 text-gray-900">${record.duration || '0h 0m'}</td>
+                            <td class="px-6 py-4">
+                                <span class="bg-${record.status === 'Complete' ? 'green' : record.status === 'Active' ? 'blue' : 'yellow'}-100 text-${record.status === 'Complete' ? 'green' : record.status === 'Active' ? 'blue' : 'yellow'}-700 px-3 py-1 rounded-full text-xs font-medium">${record.status || 'Unknown'}</span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+
+                window.updatePagination = function(totalPages, currentPage, totalRecords) {
+                    console.log('📄 Updating pagination:', { totalPages, currentPage, totalRecords });
+                    const showingEl = document.getElementById('paginationInfo');
+                    const startRecord = (currentPage - 1) * itemsPerPage + 1;
+                    const endRecord = Math.min(currentPage * itemsPerPage, totalRecords);
+                    if (showingEl) showingEl.textContent = `Showing ${startRecord} to ${endRecord} of ${totalRecords} records`;
+
+                    const paginationContainer = document.getElementById('paginationControls');
+                    if (!paginationContainer) return;
+
+                    let html = '';
+                    if (currentPage > 1) {
+                        html += `<button onclick="loadAttendance(${currentPage - 1})" class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100">Previous</button>`;
+                    }
+
+                    for (let i = 1; i <= totalPages; i++) {
+                        if (i === currentPage) {
+                            html += `<button class="px-3 py-1 bg-[#003D7A] text-white rounded">${i}</button>`;
+                        } else {
+                            html += `<button onclick="loadAttendance(${i})" class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100">${i}</button>`;
+                        }
+                    }
+
+                    if (currentPage < totalPages) {
+                        html += `<button onclick="loadAttendance(${currentPage + 1})" class="px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100">Next</button>`;
+                    }
+
+                    paginationContainer.innerHTML = html;
+                }
+
+                window.updateAttendanceSummary = function(summary, month) {
+                    console.log('📊 Updating attendance summary for', month, 'with server summary:', summary);
+
+                    const summaryTitle = document.getElementById('summaryTitle');
+                    if (summaryTitle) summaryTitle.textContent = `${month} Summary`;
+
+                    document.getElementById('daysPresent').textContent = summary.present || 0;
+                    document.getElementById('daysAbsent').textContent = summary.absent || 0;
+                    document.getElementById('lateArrivals').textContent = summary.late || 0;
+                    document.getElementById('earlyDepartures').textContent = summary.early || 0;
+                    document.getElementById('totalHours').textContent = summary.totalHoursStr || '0h 0m';
+                }
+
+                // Call loadAttendance when page loads
+                loadAttendance();
+
+                // Add event listener for month change
+                const attendanceMonthSelect = document.getElementById('attendanceMonthSelect');
+                if (attendanceMonthSelect) {
+                    attendanceMonthSelect.addEventListener('change', function() {
+                        console.log('📅 Month changed, reloading attendance...');
+                        loadAttendance(1);
+                    });
+                }
+            } else if (page === 'performance') {
+                // Performance page - Load employee performance data
+                loadEmployeePerformance();
+                    // --- LOAD EMPLOYEE PERFORMANCE DATA ---
+    async function loadEmployeePerformance() {
+        try {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                console.error("Employee ID not found in localStorage");
+                return;
+            }
+
+            console.log('Loading performance data for employee:', employeeId);
+
+            // Fetch KPI data
+            const kpiResponse = await fetch(`/api/performance/kpi/${employeeId}`);
+            const kpiData = await kpiResponse.json();
+
+            // Fetch historical data
+            const historyResponse = await fetch(`/api/performance/history/${employeeId}`);
+            const historyData = await historyResponse.json();
+
+            if (kpiData && kpiData.empId) {
+                updatePerformanceOverview(kpiData);
+                updateKPIs(kpiData);
+                updatePerformanceTrend(historyData.archive || []);
+            }
+
+            if (historyData && historyData.surveyHistory) {
+                updatePerformanceReviews(historyData.surveyHistory);
+            }
+
+        } catch (error) {
+            console.error("Error loading performance data:", error);
+        }
+    }
+
+    function updatePerformanceOverview(data) {
+        // Update overall score
+        const overallScoreEl = document.getElementById('overallScore');
+        const performanceLevelEl = document.getElementById('performanceLevel');
+        const overallScoreChangeEl = document.getElementById('overallScoreChange');
+
+        if (overallScoreEl) overallScoreEl.textContent = `${data.overallScore || 0}%`;
+        if (performanceLevelEl) performanceLevelEl.textContent = data.performanceLevel || 'No Data';
+
+        // Update current quarter
+        const currentQuarterEl = document.getElementById('currentQuarter');
+        const now = new Date();
+        const quarter = Math.floor((now.getMonth() + 3) / 3);
+        const year = now.getFullYear();
+        if (currentQuarterEl) currentQuarterEl.textContent = `Q${quarter} ${year}`;
+
+        // Update attendance rate
+        const attendanceRateEl = document.getElementById('attendanceRate');
+        const attendanceStatusEl = document.getElementById('attendanceStatus');
+        if (attendanceRateEl) attendanceRateEl.textContent = `${data.attendanceRate || 0}%`;
+        if (attendanceStatusEl) {
+            const rate = data.attendanceRate || 0;
+            attendanceStatusEl.textContent = rate >= 90 ? 'Excellent' : rate >= 75 ? 'Good' : 'Needs Improvement';
+        }
+
+        // Update survey rating
+        const surveyRatingEl = document.getElementById('surveyRating');
+        if (surveyRatingEl && data.survey) {
+            surveyRatingEl.textContent = data.survey.average_score || 'N/A';
+        }
+
+        // Update present days
+        const presentDaysEl = document.getElementById('presentDays');
+        if (presentDaysEl) presentDaysEl.textContent = data.presentDays || 0;
+    }
+
+    function updateKPIs(data) {
+        const kpiContainer = document.getElementById('kpiContainer');
+        if (!kpiContainer) return;
+
+        const kpis = [
+            {
+                name: 'Attendance Rate',
+                current: data.attendanceRate || 0,
+                target: 100,
+                status: (data.attendanceRate || 0) >= 90 ? 'Excellent' : (data.attendanceRate || 0) >= 75 ? 'Good' : 'Needs Improvement'
+            },
+            {
+                name: 'Work Intensity',
+                current: data.workIntensity || 0,
+                target: 100,
+                status: (data.workIntensity || 0) >= 90 ? 'Excellent' : (data.workIntensity || 0) >= 75 ? 'Good' : 'Needs Improvement'
+            },
+            {
+                name: 'Punctuality Rate',
+                current: data.punctualityRate || 0,
+                target: 100,
+                status: (data.punctualityRate || 0) >= 90 ? 'Excellent' : (data.punctualityRate || 0) >= 75 ? 'Good' : 'Needs Improvement'
+            },
+            {
+                name: 'Survey Score',
+                current: data.survey ? Number(data.survey.percentage_score) : 0,
+                target: 100,
+                status: data.performanceLevel || 'No Data'
+            }
+        ];
+
+        let html = '';
+        kpis.forEach(kpi => {
+            const percentage = Math.min((kpi.current / kpi.target) * 100, 100);
+            const statusColor = kpi.status === 'Excellent' ? 'green' : kpi.status === 'Good' ? 'green' : kpi.status === 'Very Good' ? 'green' : 'yellow';
+
+            html += `
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-900">${kpi.name}</span>
+                        <span class="text-sm text-gray-500">${kpi.current}/${kpi.target} target</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div class="bg-${statusColor}-500 h-3 rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                    <p class="text-xs text-${statusColor}-600 mt-1">${percentage.toFixed(0)}% - ${kpi.status}</p>
+                </div>
+            `;
+        });
+
+        kpiContainer.innerHTML = html;
+    }
+
+    function updatePerformanceTrend(archives) {
+        const trendContainer = document.getElementById('performanceTrend');
+        const averageScoreEl = document.getElementById('averageScore');
+
+        if (!trendContainer) return;
+
+        // Calculate average score
+        const scores = archives.map(a => a.kpi?.overallScore || 0).filter(s => s > 0);
+        const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(0) : 0;
+        if (averageScoreEl) averageScoreEl.textContent = `${avgScore}%`;
+
+        // Create trend bars for last 4 quarters
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        let html = '';
+
+        quarters.forEach((quarter, index) => {
+            const archive = archives.find(a => {
+                const month = a.month;
+                const quarterNum = Math.ceil(month / 3);
+                return quarterNum === (index + 1);
+            });
+
+            const score = archive ? (archive.kpi?.overallScore || 0) : 0;
+            const height = Math.max((score / 100) * 100, 10); // Minimum 10% height
+
+            html += `
+                <div class="flex flex-col items-center flex-1">
+                    <div class="w-full bg-blue-500 rounded-t" style="height: ${height}%"></div>
+                    <p class="text-xs text-gray-600 mt-2">${quarter}</p>
+                </div>
+            `;
+        });
+
+        trendContainer.innerHTML = html;
+    }
+
+    function updatePerformanceReviews(surveys) {
+        const reviewsContainer = document.getElementById('reviewsContainer');
+        if (!reviewsContainer) return;
+
+        if (!surveys || surveys.length === 0) {
+            reviewsContainer.innerHTML = '<div class="text-center text-gray-500 py-8">No performance reviews available</div>';
+            return;
+        }
+
+        let html = '';
+        surveys.slice(0, 3).forEach(survey => { // Show latest 3 reviews
+            const date = new Date(survey.submittedAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+
+            const level = survey.performance_level || 'Satisfactory';
+            const levelColor = level === 'Excellent' ? 'green' : level === 'Very Good' ? 'green' : level === 'Good' ? 'blue' : 'yellow';
+
+            html += `
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-${levelColor}-100 p-2 rounded-lg">
+                                <i class="fas fa-file-alt text-${levelColor}-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">Performance Review</p>
+                                <p class="text-xs text-gray-500">Submitted: ${date}</p>
+                            </div>
+                        </div>
+                        <span class="bg-${levelColor}-100 text-${levelColor}-700 px-3 py-1 rounded-full text-xs font-medium">${level}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">${survey.achievements || 'No additional notes provided.'}</p>
+                    <div class="flex items-center gap-4 text-sm">
+                        <span class="text-gray-500"><i class="fas fa-calendar mr-1"></i> ${date}</span>
+                        <span class="text-gray-500"><i class="fas fa-star text-yellow-500 mr-1"></i> Score: ${survey.percentage_score || 0}%</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        reviewsContainer.innerHTML = html;
+    }
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', loadEmployeePerformance);
+            }
+
+
+        }
+
+    
+    
+    // --- MESSAGING FUNCTIONS ---
+
+    let currentConversationId = null;
+    let currentConversationType = null;
+    let currentConversationParticipants = [];
+    let currentUserId = null;
+
+    function toggleMessagingModal() {
+        console.log('🔄 Toggling messaging modal');
+        const modal = document.getElementById('messagingModal');
+        modal.classList.toggle('hidden');
+        
+        if (!modal.classList.contains('hidden')) {
+            console.log('📱 Opening messaging modal, loading conversations');
+            currentUserId = localStorage.getItem('employeeId');
+            loadConversations();
+        } else {
+            console.log('📱 Closing messaging modal');
+        }
+    }
+
+    function openNewChatModal() {
+        document.getElementById('newChatModal').classList.remove('hidden');
+        document.getElementById('newChatSearch').focus();
+    }
+
+    function closeNewChatModal() {
+        document.getElementById('newChatModal').classList.add('hidden');
+        document.getElementById('newChatSearch').value = '';
+        document.getElementById('searchResults').innerHTML = '';
+        document.getElementById('createGroupBtn').classList.add('hidden');
+    }
+
+    async function loadConversations() {
+        try {
+            console.log('📥 Loading conversations for user:', currentUserId);
+            const response = await fetch(`/api/messaging/conversations/${currentUserId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('✅ Loaded conversations:', data.conversations.length);
+                renderConversations(data.conversations);
+                updateUnreadBadge(data.conversations);
+            } else {
+                console.error('❌ Failed to load conversations:', data.message);
+            }
+        } catch (error) {
+            console.error('❌ Error loading conversations:', error);
+        }
+    }
+
+    function updateUnreadBadge(conversations) {
+        const badge = document.getElementById('unreadMessagesBadge');
+        let totalUnread = 0;
+
+        conversations.forEach(conv => {
+            const unread = conv.unreadCount || 0;
+            if (unread > 0) {
+                totalUnread += unread;
+            } else if (conv.lastMessage && conv.lastMessage.senderId !== currentUserId) {
+                totalUnread++;
+            }
+        });
+
+        if (totalUnread > 0) {
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    function renderConversations(conversations) {
+        const container = document.getElementById('conversationsList');
+        
+        if (conversations.length === 0) {
+            container.innerHTML = '<div class="p-4 text-center text-gray-500">No conversations yet</div>';
+            return;
+        }
+
+        let html = '';
+        conversations.forEach(conv => {
+            const lastMessage = conv.lastMessage || {};
+            const participant = conv.participants[0] || {};
+            const unread = conv.unreadCount || 0;
+            const avatar = conv.type === 'group'
+                ? (conv.groupPhoto || '/uploads/profiles/default-avatar.png')
+                : (participant.profilePic || '/uploads/profiles/default-avatar.png');
+            const name = conv.type === 'group' ? conv.name : (participant.fullName || 'Unknown');
+            const time = lastMessage.timestamp ? new Date(lastMessage.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+            const unreadBadge = unread > 0 ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white bg-red-500">${unread}</span>` : '';
+
+            html += `
+                <div onclick="openConversation('${conv._id}')" class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <img src="${avatar}" class="w-12 h-12 rounded-full" alt="Avatar">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-semibold text-gray-900 truncate">${name}${unreadBadge}</h4>
+                                <span class="text-xs text-gray-500">${time}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate">${lastMessage.content || 'No messages yet'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    async function openConversation(conversationId) {
+        currentConversationId = conversationId;
+        
+        // Show chat area
+        document.getElementById('chatHeader').classList.remove('hidden');
+        document.getElementById('messagesContainer').classList.remove('hidden');
+        document.getElementById('messageInput').classList.remove('hidden');
+        
+        // Load conversation details and messages
+        await loadConversationDetails(conversationId);
+        await loadMessages(conversationId);
+        
+        // Mark messages as read
+        await markMessagesAsRead(conversationId);
+        await loadConversations();
+    }
+
+    async function loadConversationDetails(conversationId) {
+        try {
+            const response = await fetch(`/api/messaging/conversations/${currentUserId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const conv = data.conversations.find(c => c._id.toString() === conversationId);
+                if (conv) {
+                    currentConversationParticipants = conv.participants || [];
+                    const participant = conv.participants[0] || {};
+                currentConversationType = conv.type;
+                const avatarUrl = conv.type === 'group'
+                    ? (conv.groupPhoto || '/uploads/profiles/default-avatar.png')
+                    : (participant.profilePic || '/uploads/profiles/default-avatar.png');
+                document.getElementById('chatAvatar').src = avatarUrl;
+                document.getElementById('chatName').textContent = conv.type === 'group' ? conv.name : (participant.fullName || 'Unknown');
+                document.getElementById('chatStatus').textContent = 'Active';
+                const groupBtn = document.getElementById('groupPhotoButton');
+                if (groupBtn) {
+                    if (conv.type === 'group') {
+                        groupBtn.classList.remove('hidden');
+                    } else {
+                        groupBtn.classList.add('hidden');
+                    }
+                }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading conversation details:', error);
+        }
+    }
+
+    async function loadMessages(conversationId) {
+        try {
+            const response = await fetch(`/api/messaging/messages/${conversationId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                renderMessages(data.messages);
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        }
+    }
+
+    function renderMessages(messages) {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        container.classList.remove('hidden');
+        
+        if (messages.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-8">No messages yet. Start the conversation!</div>';
+            return;
+        }
+
+        let html = '';
+        messages.forEach(msg => {
+            const isOwn = msg.senderId === currentUserId;
+            const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const avatar = msg.sender?.profilePic || '/uploads/profiles/default-avatar.png';
+            const senderName = msg.sender?.fullName || (msg.senderId === currentUserId ? 'You' : (msg.senderId || 'Unknown'));
+
+            if (msg.messageType === 'text') {
+                const isSeen = isOwn && Array.isArray(msg.readBy) && msg.readBy.length > 0;
+                html += `
+                    <div class="flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4">
+                        <div class="flex ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 max-w-xs lg:max-w-md">
+                            <img src="${avatar}" class="w-8 h-8 rounded-full" alt="Avatar">
+                            <div class="bg-${isOwn ? 'blue' : 'gray'}-100 p-3 rounded-lg">
+                                ${isOwn ? '' : `<p class="text-xs text-gray-600 mb-1">${senderName}</p>`}
+                                <p class="text-sm">${msg.content}</p>
+                                <p class="text-xs text-gray-500 mt-1">${time}${isSeen ? ' · Seen' : ''}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (msg.messageType === 'image') {
+                html += `
+                    <div class="flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4">
+                        <div class="flex ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 max-w-xs lg:max-w-md">
+                            <img src="${avatar}" class="w-8 h-8 rounded-full" alt="Avatar">
+                            <div class="bg-${isOwn ? 'blue' : 'gray'}-100 p-3 rounded-lg">
+                                ${isOwn ? '' : `<p class="text-xs text-gray-600 mb-1">${senderName}</p>`}
+                                <img src="${msg.mediaUrl}" class="max-w-full rounded" onclick="openImageModal('${msg.mediaUrl}')" style="cursor: pointer;">
+                                <p class="text-xs text-gray-500 mt-1">${time}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (msg.messageType === 'video') {
+                html += `
+                    <div class="flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4">
+                        <div class="flex ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 max-w-xs lg:max-w-md">
+                            <img src="${avatar}" class="w-8 h-8 rounded-full" alt="Avatar">
+                            <div class="bg-${isOwn ? 'blue' : 'gray'}-100 p-3 rounded-lg">
+                                ${isOwn ? '' : `<p class="text-xs text-gray-600 mb-1">${senderName}</p>`}
+                                <video controls class="max-w-full rounded">
+                                    <source src="${msg.mediaUrl}" type="video/mp4">
+                                </video>
+                                <p class="text-xs text-gray-500 mt-1">${time}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html;
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function closeChat() {
+        currentConversationId = null;
+        document.getElementById('chatHeader').classList.add('hidden');
+        document.getElementById('messagesContainer').classList.add('hidden');
+        document.getElementById('messageInput').classList.add('hidden');
+        document.getElementById('messagesContainer').innerHTML = '';
+    }
+
+    async function sendMessage() {
+        const textInput = document.getElementById('messageText');
+        const content = textInput.value.trim();
+        
+        if (!content || !currentConversationId) {
+            console.warn('⚠️ Cannot send message: no content or conversation selected');
+            return;
+        }
+
+        console.log('📤 Sending message:', content, 'to conversation:', currentConversationId);
+
+        try {
+            const response = await fetch('/api/messaging/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    conversationId: currentConversationId,
+                    senderId: currentUserId,
+                    content,
+                    messageType: 'text'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                console.log('✅ Message sent successfully');
+                textInput.value = '';
+                await loadMessages(currentConversationId);
+                await loadConversations(); // Update conversation list
+            } else {
+                console.error('❌ Failed to send message:', data.message);
+            }
+        } catch (error) {
+            console.error('❌ Error sending message:', error);
+        }
+    }
+
+    async function sendMediaMessage(input, type) {
+        const file = input.files[0];
+        if (!file || !currentConversationId) return;
+
+        const formData = new FormData();
+        formData.append('conversationId', currentConversationId);
+        formData.append('senderId', currentUserId);
+        formData.append('content', `${type} shared`);
+        formData.append('messageType', type);
+        formData.append('media', file);
+
+        try {
+            const response = await fetch('/api/messaging/messages', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('Error sending media:', response.status, text);
+                return;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                input.value = '';
+                toggleAttachmentMenu();
+                await loadMessages(currentConversationId);
+                await loadConversations();
+            }
+        } catch (error) {
+            console.error('Error sending media:', error);
+        }
+    }
+
+    function toggleAttachmentMenu() {
+        document.getElementById('attachmentMenu').classList.toggle('hidden');
+    }
+
+    function handleMessageKeydown(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    async function markMessagesAsRead(conversationId) {
+        try {
+            await fetch(`/api/messaging/messages/read/${conversationId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId })
+            });
+        } catch (error) {
+            console.error('Error marking messages as read:', error);
+        }
+    }
+
+    // Search employees for new chat
+    let searchTimeout;
+    document.getElementById('newChatSearch').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+        
+        if (query.length < 2) {
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('createGroupBtn').classList.add('hidden');
+            return;
+        }
+
+        searchTimeout = setTimeout(() => searchEmployees(query, 'newChat'), 300);
+    });
+
+    document.getElementById('messageSearch').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+        const resultsContainer = document.getElementById('messageSearchResults');
+
+        if (query.length < 2) {
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.add('hidden');
+            return;
+        }
+
+        searchTimeout = setTimeout(() => searchEmployees(query, 'quick'), 300);
+    });
+
+    async function searchEmployees(query, target = 'newChat') {
+        try {
+            console.log('🔍 Searching employees with query:', query, 'target:', target);
+            const response = await fetch(`/api/messaging/search-employees?query=${encodeURIComponent(query)}&currentUserId=${currentUserId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('✅ Found employees:', data.employees.length);
+                if (target === 'quick') {
+                    renderQuickSearchResults(data.employees);
+                } else {
+                    renderSearchResults(data.employees);
+                }
+            } else {
+                console.error('❌ Search failed:', data.message);
+            }
+        } catch (error) {
+            console.error('❌ Error searching employees:', error);
+        }
+    }
+
+    function renderQuickSearchResults(employees) {
+        const container = document.getElementById('messageSearchResults');
+        if (!container) return;
+
+        if (employees.length === 0) {
+            container.innerHTML = '<div class="p-4 text-center text-gray-500">No employees found</div>';
+            container.classList.remove('hidden');
+            return;
+        }
+
+        let html = '';
+        employees.forEach(emp => {
+            html += `
+                <div onclick="startConversation('${emp.employeeId}')" class="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <img src="${emp.profilePic || '/uploads/profiles/default-avatar.png'}" class="w-10 h-10 rounded-full" alt="Avatar">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-semibold text-gray-900 truncate">${emp.fullName}</h4>
+                            <p class="text-sm text-gray-600 truncate">${emp.employeeId} • ${emp.position || 'Staff'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        container.classList.remove('hidden');
+    }
+
+    function renderSearchResults(employees) {
+        const container = document.getElementById('searchResults');
+        
+        if (employees.length === 0) {
+            container.innerHTML = '<div class="p-4 text-center text-gray-500">No employees found</div>';
+            document.getElementById('createGroupBtn').classList.add('hidden');
+            return;
+        }
+
+        let html = '';
+        employees.forEach(emp => {
+            html += `
+                <div class="p-3 border-b border-gray-100 hover:bg-gray-50">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" value="${emp.employeeId}" class="w-4 h-4 text-[#003D7A] rounded focus:ring-[#003D7A]">
+                        <img src="${emp.profilePic || '/uploads/profiles/default-avatar.png'}" class="w-10 h-10 rounded-full" alt="Avatar">
+                        <div class="flex-1 cursor-pointer" onclick="startConversation('${emp.employeeId}')">
+                            <h4 class="font-semibold text-gray-900">${emp.fullName}</h4>
+                            <p class="text-sm text-gray-600">${emp.employeeId} • ${emp.position || 'Staff'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        
+        // Show create group button if multiple results
+        if (employees.length > 1) {
+            document.getElementById('createGroupBtn').classList.remove('hidden');
+        } else {
+            document.getElementById('createGroupBtn').classList.add('hidden');
+        }
+    }
+
+    async function startConversation(employeeId) {
+        try {
+            const response = await fetch('/api/messaging/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    participants: [currentUserId, employeeId],
+                    type: 'direct',
+                    createdBy: currentUserId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                closeNewChatModal();
+                await loadConversations();
+                openConversation(data.conversation._id);
+            }
+        } catch (error) {
+            console.error('Error starting conversation:', error);
+        }
+    }
+
+    async function createGroupChat() {
+        const selectedEmployees = Array.from(document.querySelectorAll('#searchResults input[type="checkbox"]:checked'))
+            .map(cb => cb.value);
+
+        if (selectedEmployees.length < 2) {
+            alert('Please select at least 2 employees for a group chat');
+            return;
+        }
+
+        const groupName = prompt('Enter group name:');
+        if (!groupName) return;
+
+        try {
+            const response = await fetch('/api/messaging/groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: groupName,
+                    participants: selectedEmployees,
+                    createdBy: currentUserId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                closeNewChatModal();
+                await loadConversations();
+                openConversation(data.conversation._id);
+            }
+        } catch (error) {
+            console.error('Error creating group:', error);
+        }
+    }
+
+    function openImageModal(src) {
+        // Simple image modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[70]';
+        modal.innerHTML = `
+            <div class="relative max-w-4xl max-h-full p-4">
+                <img src="${src}" class="max-w-full max-h-full object-contain">
+                <button onclick="this.parentElement.parentElement.remove()" class="absolute top-4 right-4 text-white text-2xl">&times;</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Socket.IO for real-time messaging
+    socket.on('new-message', async (message) => {
+        console.log('📨 Received new message via socket:', message);
+        playMessageSound();
+        if (message.conversationId === currentConversationId) {
+            console.log('📨 Message is for current conversation, reloading messages');
+            await loadMessages(currentConversationId);
+            if (message.senderId !== currentUserId) {
+                await markMessagesAsRead(currentConversationId);
+            }
+        }
+        await loadConversations(); // Update conversation list
+    });
+
+    socket.on('messages-read', async ({ conversationId, readerId }) => {
+        if (conversationId === currentConversationId) {
+            await loadMessages(currentConversationId);
+        }
+        await loadConversations();
+    });
+
+    // Close modals when clicking outside
+    document.addEventListener('click', function(e) {
+        const messagingModal = document.getElementById('messagingModal');
+        const newChatModal = document.getElementById('newChatModal');
+        
+        if (e.target === messagingModal) {
+            toggleMessagingModal();
+        }
+        if (e.target === newChatModal) {
+            closeNewChatModal();
+        }
+    });
+
+    // Load conversations on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        currentUserId = localStorage.getItem('employeeId');
+        if (currentUserId) {
+            loadConversations();
+        }
+    });
+    
+    
+    </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!-- My Schedule Page -->
+<div class="p-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">My Schedule</h2>
+            <p class="text-gray-600" id="monthYear">Loading...</p>
+        </div>
+    
+    </div>
+
+    <div class="grid grid-cols-4 gap-6">
+        <!-- Calendar View -->
+        <div class="col-span-3">
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <!-- Calendar Header -->
+                <div class="grid grid-cols-7 bg-gray-50 border-b">
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Sun</div>
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Mon</div>
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Tue</div>
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Wed</div>
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Thu</div>
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Fri</div>
+                    <div class="p-4 text-center text-sm font-semibold text-gray-600">Sat</div>
+                </div>
+
+                <!-- Calendar Grid -->
+                <div class="grid grid-cols-7" id="calendarGrid">      
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-span-1 space-y-6">
+            <!-- Schedule Summary -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">This Month</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Working Days</span>
+                        <span class="font-bold text-gray-900" id="workingDays">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Days Off</span>
+                        <span class="font-bold text-gray-900" id="daysOff">0</span>
+                    </div>
+                    <div class="flex justify-between hidden">
+                        <span class="text-gray-600 text-sm">Leave Days</span>
+                        <span class="font-bold text-gray-900" id="leaveDays">0</span>
+                    </div>
+                    <div class="flex justify-between hidden">
+                        <span class="text-gray-600 text-sm">Overtime Hours</span>
+                        <span class="font-bold text-gray-900" id="overtimeHours">0h</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Swap Request -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">Request Shift Swap</h3>
+                <p class="text-sm text-gray-600 mb-4">Need to swap a shift with a colleague?</p>
+                <button onclick="openSwapRequestModal()" class="w-full bg-[#003D7A] hover:bg-[#0052A3] text-white py-2 rounded-lg font-medium transition">
+                    <i class="fas fa-exchange-alt mr-2"></i> Request Swap
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shift Swap Request Modal -->
+<div id="swapRequestModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl flex-shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fas fa-exchange-alt mr-2"></i> Request Shift Swap</h3>
+            <button onclick="closeSwapRequestModal()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-5 overflow-y-auto flex-1">
+            <!-- Your Shift -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Your Shift to Swap *</label>
+                <select id="myShiftSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    <option value="">Select your shift...</option>
+                    <option value="mar3">March 3, 2026 - Morning (8AM-4PM)</option>
+                    <option value="mar4">March 4, 2026 - Morning (8AM-4PM)</option>
+                    <option value="mar5">March 5, 2026 - Afternoon (12PM-8PM)</option>
+                    <option value="mar6">March 6, 2026 - Morning (8AM-4PM)</option>
+                    <option value="mar7">March 7, 2026 - Morning (8AM-4PM)</option>
+                    <option value="mar10">March 10, 2026 - Morning (8AM-4PM)</option>
+                </select>
+            </div>
+
+            <!-- Swap With -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Swap With Colleague *</label>
+                <select id="colleagueSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    <option value="">Select colleague...</option>
+                    <option value="robert">Dr. Robert Martinez</option>
+                    <option value="maria">Dr. Maria Garcia</option>
+                    <option value="andrew">Dr. Andrew Lee</option>
+                    <option value="karen">Dr. Karen Smith</option>
+                    <option value="james">Dr. James Wilson</option>
+                </select>
+            </div>
+
+            <!-- Their Shift -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Their Shift to Take *</label>
+                <select id="theirShiftSelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    <option value="">Select their shift...</option>
+                    <option value="mar2">March 2, 2026 - Morning (8AM-4PM)</option>
+                    <option value="mar8">March 8, 2026 - Evening (4PM-12AM)</option>
+                    <option value="mar9">March 9, 2026 - Morning (8AM-4PM)</option>
+                    <option value="mar11">March 11, 2026 - Afternoon (12PM-8PM)</option>
+                </select>
+            </div>
+
+            <!-- Reason -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Reason for Swap</label>
+                <textarea id="swapReason" rows="3" placeholder="Explain why you need to swap this shift..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A] resize-none"></textarea>
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p class="text-xs text-blue-800"><i class="fas fa-info-circle mr-1"></i> Your colleague will receive a notification to approve or decline this swap request. HR will be notified once both parties agree.</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl flex-shrink-0">
+            <button onclick="closeSwapRequestModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100">Cancel</button>
+            <button onclick="submitSwapRequest()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3]"><i class="fas fa-paper-plane mr-1"></i> Send Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- Swap Request Success Modal -->
+<div id="swapSuccessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full text-center p-8">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check text-green-600 text-3xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Request Sent!</h3>
+        <p class="text-gray-600 text-sm mb-6">Your shift swap request has been sent to your colleague. You'll be notified when they respond.</p>
+        <button onclick="closeSwapSuccessModal()" class="w-full bg-[#003D7A] text-white py-2.5 rounded-lg font-medium hover:bg-[#0052A3]">Got it</button>
+    </div>
+</div>
+

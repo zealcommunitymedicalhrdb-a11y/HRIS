@@ -1,0 +1,298 @@
+<div class="flex flex-col h-screen bg-gray-100">
+        <!-- Top Navigation Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200">
+            <!-- Combined Header and Navigation -->
+            <div class="px-4 sm:px-8 py-3 flex items-center justify-between">
+                <!-- Left: Title -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">Scheduling</h1>
+                        <p class="text-xs text-gray-500">HR Shift Management</p>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar -->
+            <div class="hidden md:block w-80 bg-white border-r border-gray-200 overflow-y-auto">
+                <div class="p-6 space-y-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-calendar-xmark text-red-600 text-lg"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Employees On Leave</h2>
+                    </div>
+                    <div id="employeeOnLeaveContainer" class="space-y-3">
+                        <div class="text-center text-gray-500 text-sm py-4">
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="flex-1 flex flex-col overflow-auto">
+                <!-- DRAG EMPLOYEE BOX -->
+                <div class="bg-white rounded-lg shadow p-4 mb-6 mx-4 mt-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">Employees (Drag to Assign)</h3>
+
+                    <div id="employeeDragBox" class="flex flex-wrap gap-3 overflow-x-auto pb-2">
+                        <!-- Employees will render here -->
+                    </div>
+                </div>
+
+                <div class="p-4 sm:p-8 flex-1 overflow-auto">
+                <!-- ============ TAB 2: ASSIGN SHIFTS ============ -->
+                <div id="assignments-tab" class="tab-content space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3 sm:gap-0">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-900">Assign Shifts</h1>
+                            <p class="text-gray-600 mt-1">Assign doctors to specific dates and shifts</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button onclick="openModal('quickAssignModal')" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2">
+                                <i class="fas fa-plus"></i>
+                                Quick Assign
+                            </button>
+                            <button onclick="openModal('bulkAssignModal')" class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-2">
+                                <i class="fas fa-clone"></i>
+                                Bulk Assign
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Calendar View -->
+                    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 id="calendarMonthYear" class="text-xl font-bold text-gray-900">Month Year</h2>
+    </div>
+
+    <!-- Days of week header -->
+    <div class="grid grid-cols-7 gap-2 text-center font-semibold text-gray-600">
+        <div>SUN</div>
+        <div>MON</div>
+        <div>TUE</div>
+        <div>WED</div>
+        <div>THU</div>
+        <div>FRI</div>
+        <div>SAT</div>
+    </div>
+<div class="bg-white rounded-lg shadow p-4 sm:p-6 relative">
+    <!-- Calendar grid -->
+    <div id="calendarGrid" class="grid grid-cols-7 gap-2">
+        <!-- Drag Selection Overlay -->
+<div id="selectionOverlay" 
+     class="absolute bg-blue-400/30 border border-blue-600 rounded hidden pointer-events-none z-10">
+</div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="quickAssignModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-5 flex items-center justify-between rounded-t-xl">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-user-plus text-white text-xl"></i>
+                    <h3 class="text-white font-bold text-lg">Quick Assign Shift</h3>
+                </div>
+                <button onclick="closeQuickAssignModal()" class="text-white/80 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-5">
+                <!-- Employee Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Employee *</label>
+                    <select id="quickAssignEmployee" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                        <option value="">Select an employee</option>
+                    </select>
+                </div>
+
+                <!-- Shift Template -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Shift Template *</label>
+                    <select id="quickAssignShift" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                        <option value="">Select shift type</option>
+                        <option value="morning">Morning Shift (08:00 - 14:00)</option>
+                    </select>
+                </div>
+
+                <!-- Date Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date *</label>
+                    <input type="date" id="quickAssignDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
+                    <textarea id="quickAssignNotes" rows="2" placeholder="Add any special instructions..." 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
+                <button onclick="closeQuickAssignModal()" class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition">
+                    Cancel
+                </button>
+                <button onclick="saveQuickAssign()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="fas fa-check"></i>
+                    Assign Shift
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Assign Modal -->
+    <div id="bulkAssignModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-green-600 to-green-700 p-5 flex items-center justify-between rounded-t-xl">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-users text-white text-xl"></i>
+                    <h3 class="text-white font-bold text-lg">Bulk Assign Shifts</h3>
+                </div>
+                <button onclick="closeBulkAssignModal()" class="text-white/80 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-5">
+                <!-- Step Indicator -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                    <div class="flex items-center gap-2">
+                        <div id="bulkStep1" class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
+                        <span class="text-sm font-medium text-gray-700">Select Staff</span>
+                    </div>
+                    <div class="hidden sm:block w-12 h-0.5 bg-gray-300"></div>
+                    <div class="flex items-center gap-2">
+                        <div id="bulkStep2" class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-bold text-sm">2</div>
+                        <span class="text-sm font-medium text-gray-500">Configure Shifts</span>
+                    </div>
+                    <div class="hidden sm:block w-12 h-0.5 bg-gray-300"></div>
+                    <div class="flex items-center gap-2">
+                        <div id="bulkStep3" class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-bold text-sm">3</div>
+                        <span class="text-sm font-medium text-gray-500">Preview & Confirm</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Select Staff -->
+                <div id="bulkStepContent1" class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-sm font-semibold text-gray-700">Select Employees</h4>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="selectAllStaff" onchange="toggleSelectAllStaff()" class="w-4 h-4 text-green-600 rounded focus:ring-green-500">
+                            <span class="text-sm text-gray-600">Select All</span>
+                        </label>
+                    </div>
+                    <div id="bulkEmployeeContainer" class="border border-gray-300 rounded-lg p-4 max-h-60 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+                     </div>
+                    <p id="selectedStaffCount" class="text-sm text-gray-500">0 employees selected</p>
+                </div>
+
+                <!-- Step 2: Configure Shifts (Hidden initially) -->
+                <div id="bulkStepContent2" class="hidden space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Start Date *</label>
+                            <input type="date" id="bulkStartDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">End Date *</label>
+                            <input type="date" id="bulkEndDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Shift Pattern *</label>
+                        <select id="bulkShiftPattern" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                            <option value="">Select pattern</option>
+                            <option value="rotate">Rotating shifts</option>
+                        </select>
+                    </div>
+
+                    <div id="sameShiftSelect">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Shift Type *</label>
+                        <select id="bulkShiftType" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                            <option value="morning">Morning Shift (08:00 - 14:00)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Step 3: Preview (Hidden initially) -->
+                <div id="bulkStepContent3" class="hidden space-y-4">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-green-800 mb-2"><i class="fas fa-check-circle mr-2"></i>Assignment Summary</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-600">Employees Selected:</p>
+                                <p class="font-medium text-gray-900" id="previewStaffCount">3 employees</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Date Range:</p>
+                                <p class="font-medium text-gray-900" id="previewDateRange">Mar 1 - Mar 7, 2026</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Shift Pattern:</p>
+                                <p class="font-medium text-gray-900" id="previewPattern">Morning Shift</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Total Shifts:</p>
+                                <p class="font-medium text-gray-900" id="previewTotalShifts">21 shifts</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Employee</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Mon</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Tue</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Wed</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Thu</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Fri</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Sat</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-700">Sun</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-between gap-3 rounded-b-xl">
+                <button id="bulkBackBtn" onclick="bulkAssignBack()" class="hidden px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:ml-auto">
+                    <button onclick="closeBulkAssignModal()" class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition">
+                        Cancel
+                    </button>
+                    <button id="bulkNextBtn" onclick="bulkAssignNext()" class="px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-2">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button id="bulkConfirmBtn" onclick="confirmBulkAssign()" class="hidden px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-2">
+                        <i class="fas fa-check"></i> Confirm Assignment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+  
+    

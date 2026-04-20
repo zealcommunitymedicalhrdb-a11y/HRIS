@@ -1,0 +1,356 @@
+<!-- Dashboard Content -->
+<div class="p-4 sm:p-8"> 
+    <!-- Employee of the Month Section -->
+    <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] rounded-lg shadow-lg p-6 mb-8 relative overflow-hidden">
+        <!-- Background Pattern -->
+        <div class="absolute top-0 right-0 w-64 h-64 opacity-10">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#FFFFFF" d="M44.7,-76.4C58.8,-69.2,71.8,-59.1,79.6,-45.8C87.4,-32.5,90,-16.3,88.5,-0.9C87,14.6,81.4,29.2,73.1,42.2C64.8,55.2,53.8,66.6,40.5,74.3C27.2,82,11.6,86,-3.1,90.4C-17.8,94.8,-35.6,99.6,-50.1,93.3C-64.6,87,-75.9,69.6,-82.9,51.3C-89.9,33,-92.6,13.8,-89.4,1.8C-86.2,-10.2,-77.1,-17.2,-69.2,-28.2C-61.3,-39.2,-54.6,-54.2,-43.5,-63.1C-32.5,-72,-16.2,-74.8,-0.3,-74.3C15.7,-73.8,31.4,-70,44.7,-76.4Z" transform="translate(100 100)" />
+            </svg>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative z-10">
+            <!-- Trophy Icon -->
+            <div class="hidden md:flex flex-col items-center">
+                <div class="bg-yellow-400 p-4 rounded-full shadow-lg mb-2">
+                    <i class="fas fa-trophy text-yellow-800 text-3xl"></i>
+                </div>
+                <div class="flex gap-1">
+                    <i class="fas fa-star text-yellow-400 text-sm"></i>
+                    <i class="fas fa-star text-yellow-400 text-sm"></i>
+                    <i class="fas fa-star text-yellow-400 text-sm"></i>
+                </div>
+            </div>
+
+            <!-- Employee Photo & Info -->
+            <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 flex-1 text-center sm:text-left">
+                <div class="relative">
+                    <div class="w-24 h-24 rounded-full bg-white p-1 shadow-lg overflow-hidden">
+                        <img id="dashboardEmployeeAvatar" src="" alt="Employee avatar" class="hidden w-full h-full rounded-full object-cover" onerror="this.classList.add('hidden'); document.getElementById('dashboardEmployeeInitials').classList.remove('hidden');" />
+                        <div id="dashboardEmployeeInitials" class="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+                            SJ
+                        </div>
+                    </div>
+                    <div class="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full p-1.5 shadow">
+                        <i class="fas fa-crown text-yellow-800 text-xs"></i>
+                    </div>
+                </div>
+
+                <div class="text-white">
+                    <p class="text-yellow-300 text-xs font-semibold uppercase tracking-wider mb-1">
+                        <i class="fas fa-award mr-1"></i> Employee of the Month
+                    </p>
+                    <h3 class="text-2xl font-bold mb-1" id="dashboardEmployeeName"></h3>
+                    <p class="text-blue-200 text-sm mb-3" id="dashboardEmployeeRole"></p>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-star text-yellow-400"></i>
+                            <span class="text-sm" id="dashboardEmployeeSatisfaction"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                            <span class="text-sm" id="dashboardEmployeeProcedures"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achievement Stats -->
+            <div class="hidden md:grid grid-cols-2 gap-4">
+                <div class="bg-white/10 backdrop-blur rounded-lg p-4 text-center min-w-[120px]">
+                    <p class="text-3xl font-bold text-white" id="dashboardEmployeePerf"></p>
+                    <p class="text-blue-200 text-xs">Performance</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur rounded-lg p-4 text-center min-w-[120px]">
+                    <p class="text-3xl font-bold text-white" id="dashboardEmployeeRating"></p>
+                    <p class="text-blue-200 text-xs">Rating</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur rounded-lg p-4 text-center min-w-[120px]">
+                    <p class="text-3xl font-bold text-white" id="dashboardEmployeeAwards"></p>
+                    <p class="text-blue-200 text-xs">Awards</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur rounded-lg p-4 text-center min-w-[120px] hidden">
+                    <p class="text-3xl font-bold text-white" id="dashboardEmployeeTenure">5yr</p>
+                    <p class="text-blue-200 text-xs">Tenure</p>
+                </div>
+            </div>
+
+            <!-- View Profile Button -->
+            <div class="hidden sm:block">
+                <button id="dashboardViewProfileBtn" onclick="openDashboardEmployeeProfile()" class="bg-white text-[#003D7A] px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg flex items-center gap-2">
+                    <i class="fas fa-user"></i>
+                    View Profile
+                </button>
+            </div>
+        </div>
+
+        <!-- Month Indicator -->
+        <div class="absolute top-4 right-4 bg-white/20 backdrop-blur px-3 py-1 rounded-full">
+            <p class="text-white text-xs font-medium"><i class="fas fa-calendar-alt mr-1"></i> March 2026</p>
+        </div>
+    </div>
+
+    <!-- KPI Performance Overview -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3 sm:gap-0">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">KPI Performance Overview</h3>
+                <p class="text-gray-600 text-sm">Workforce efficiency and patient satisfaction scores</p>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <div class="flex items-baseline gap-2 mb-4">
+                <h4 class="text-4xl font-bold text-blue-600">88%</h4>
+                <span class="text-green-600 text-sm font-medium">+4.2% from last month</span>
+            </div>
+            
+            <canvas id="kpiChart" height="120"></canvas>
+        </div>
+    </div>
+
+    <!-- Pending Approvals Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Pending Approvals</h3>
+                <p class="text-gray-600 text-sm">Employee profile changes awaiting your review</p>
+            </div>
+            <button onclick="loadPendingApprovals()" class="w-full sm:w-auto self-start sm:self-auto text-left sm:text-right text-[#003D7A] hover:underline text-sm font-medium">
+                <i class="fas fa-refresh mr-1"></i> Refresh
+            </button>
+        </div>
+
+        <div id="pendingApprovalsContainer" class="space-y-4">
+            <!-- Pending approvals will be loaded here -->
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading pending approvals...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Shift Swap Requests -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Pending Shift Swap Requests</h3>
+                <p class="text-gray-600 text-sm">Review and approve schedule swaps submitted by employees</p>
+            </div>
+            <button onclick="loadPendingSwapRequests()" class="w-full sm:w-auto self-start sm:self-auto text-left sm:text-right text-[#003D7A] hover:underline text-sm font-medium">
+                <i class="fas fa-refresh mr-1"></i> Refresh
+            </button>
+        </div>
+
+        <div id="pendingSwapRequestsContainer" class="space-y-4">
+            <!-- Pending shift swap requests will be loaded here -->
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading swap requests...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Leave Requests -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Pending Leave Requests</h3>
+                <p class="text-gray-600 text-sm">Review and approve employee leave requests</p>
+            </div>
+            <button onclick="loadPendingLeaveRequests()" class="w-full sm:w-auto self-start sm:self-auto text-left sm:text-right text-[#003D7A] hover:underline text-sm font-medium">
+                <i class="fas fa-refresh mr-1"></i> Refresh
+            </button>
+        </div>
+
+        <div id="pendingLeaveRequestsContainer" class="space-y-4">
+            <!-- Pending leave requests will be loaded here -->
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading leave requests...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Time Correction Requests -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Pending Time Correction Requests</h3>
+                <p class="text-gray-600 text-sm">Review and approve employee time correction requests</p>
+            </div>
+            <button onclick="loadPendingTimeCorrections()" class="w-full sm:w-auto self-start sm:self-auto text-left sm:text-right text-[#003D7A] hover:underline text-sm font-medium">
+                <i class="fas fa-refresh mr-1"></i> Refresh
+            </button>
+        </div>
+
+        <div id="pendingTimeCorrectionsContainer" class="space-y-4">
+            <!-- Pending time corrections will be loaded here -->
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading time correction requests...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Approvals Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Recent Approvals</h3>
+                <p class="text-gray-600 text-sm">Recently approved or rejected profile changes and requests</p>
+            </div>
+            <button onclick="loadRecentApprovals()" class="w-full sm:w-auto self-start sm:self-auto text-left sm:text-right text-[#003D7A] hover:underline text-sm font-medium">
+                <i class="fas fa-refresh mr-1"></i> Refresh
+            </button>
+        </div>
+
+        <!-- Filter Buttons -->
+        <div class="flex flex-wrap gap-2 mb-6">
+            <button onclick="filterRecentApprovals('all')" class="px-4 py-2 rounded-lg font-medium text-sm transition filter-btn active" data-filter="all" style="background-color: #003D7A; color: white;">
+                All Approvals
+            </button>
+            <button onclick="filterRecentApprovals('profile')" class="px-4 py-2 rounded-lg font-medium text-sm transition filter-btn border border-gray-300 text-gray-700 hover:bg-gray-50" data-filter="profile">
+                Profile Changes
+            </button>
+            <button onclick="filterRecentApprovals('swap')" class="px-4 py-2 rounded-lg font-medium text-sm transition filter-btn border border-gray-300 text-gray-700 hover:bg-gray-50" data-filter="swap">
+                Shift Swaps
+            </button>
+            <button onclick="filterRecentApprovals('leave')" class="px-4 py-2 rounded-lg font-medium text-sm transition filter-btn border border-gray-300 text-gray-700 hover:bg-gray-50" data-filter="leave">
+                Leave Requests
+            </button>
+            <button onclick="filterRecentApprovals('time')" class="px-4 py-2 rounded-lg font-medium text-sm transition filter-btn border border-gray-300 text-gray-700 hover:bg-gray-50" data-filter="time">
+                Time Corrections
+            </button>
+        </div>
+
+        <!-- Approvals Container -->
+        <div id="recentApprovalsContainer" class="space-y-4">
+            <!-- Recent approvals will be loaded here -->
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading recent approvals...</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-6 flex items-center justify-between">
+            <p id="paginationInfo" class="text-sm text-gray-600">Showing 0 items</p>
+            <div id="paginationControls" class="flex gap-2">
+                <!-- Pagination buttons will be generated here -->
+            </div>
+        </div>
+    </div>
+
+<!-- Employee Profile Modal -->
+<div id="employeeProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-6 rounded-t-xl relative">
+            <button onclick="closeEmployeeProfileModal()" class="absolute top-4 right-4 text-white/80 hover:text-white transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            
+            <div class="flex items-center gap-4">
+                <div class="w-24 h-24 rounded-full bg-white p-1 shadow-lg overflow-hidden">
+                        <img id="modalEmployeeAvatar" src="" alt="Employee avatar" class="hidden w-full h-full rounded-full object-cover" onerror="this.classList.add('hidden'); document.getElementById('modalEmployeeInitials').classList.remove('hidden');" />
+                        <div class="w-20 h-20 bg-blue-100 border-4 border-white rounded-full flex items-center justify-center text-2xl font-bold text-blue-600" id="modalEmployeeInitials">
+                    SJ
+                </div>
+                    </div>
+                <div>
+                    <span class="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full mb-2 inline-block">
+                        <i class="fas fa-trophy mr-1"></i> EMPLOYEE OF THE MONTH
+                    </span>
+                    <h2 class="text-2xl font-bold text-white" id="modalEmployeeName"></h2>
+                    <p class="text-blue-200" id="modalEmployeeRole"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 space-y-6">
+            <!-- Performance Stats -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-blue-700" id="modalPerformance"></p>
+                    <p class="text-xs text-blue-600">Performance</p>
+                </div>
+                <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-green-700" id="modalRating"></p>
+                    <p class="text-xs text-green-600">Rating</p>
+                </div>
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-purple-700" id="modalAwards"></p>
+                    <p class="text-xs text-purple-600">Awards</p>
+                </div>
+                <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 text-center hidden">
+                    <p class="text-2xl font-bold text-orange-700" id="modalTenure"></p>
+                    <p class="text-xs text-orange-600">Tenure</p>
+                </div>
+            </div>
+
+            <!-- Employee Details -->
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <i class="fas fa-info-circle text-blue-600"></i> Personal Information
+                    </h3>
+                    <div class="space-y-2 text-sm">
+    <div class="flex justify-between">
+        <span class="text-gray-500">Employee ID:</span>
+        <span class="font-medium text-gray-900" id="modalDisplayID">---</span>
+    </div>
+    <div class="flex justify-between">
+        <span class="text-gray-500">Email:</span>
+        <span class="font-medium text-gray-900" id="modalDisplayEmail">---</span>
+    </div>
+    <div class="flex justify-between">
+        <span class="text-gray-500">Phone:</span>
+        <span class="font-medium text-gray-900" id="modalDisplayPhone">---</span>
+    </div>
+    <div class="flex justify-between hidden" >
+        <span class="text-gray-500">Join Date:</span>
+        <span class="font-medium text-gray-900" id="modalDisplayJoinDate">---</span>
+    </div>
+</div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <i class="fas fa-briefcase text-green-600"></i> Work Information
+                    </h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Department:</span>
+                            <span class="font-medium text-gray-900" id="modalDepartment">Doctors</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Position:</span>
+                            <span class="font-medium text-gray-900" id="modalPosition">Head Doctor</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Status:</span>
+                            <span class="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full" id="modalStatus">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
+            <button onclick="closeEmployeeProfileModal()" class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition">
+                Close
+            </button>
+            <button onclick="goToFullProfile()" class="px-5 py-2.5 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3] transition flex items-center gap-2 hidden"">
+                <i class="fas fa-external-link-alt"></i>
+                View Full Profile
+            </button>
+        </div>
+    </div>
+
+    
+</div>
+
+
+</div>

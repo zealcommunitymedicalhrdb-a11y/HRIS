@@ -1,0 +1,892 @@
+<!-- Payroll Content -->
+<div class="p-8">
+    <div class="grid grid-cols-4 gap-6">
+        <!-- LEFT SIDEBAR -->
+        <div class="space-y-6">
+            <!-- Payroll Settings -->
+          <div class="bg-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-bold text-gray-900 mb-4">Payroll Settings</h3>
+
+    <!-- PERIOD QUICK SELECT -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+            <label class="text-xs font-semibold text-gray-600 uppercase block mb-2">Month</label>
+            <input id="payroll-month" type="month"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+
+        <div>
+            <label class="text-xs font-semibold text-gray-600 uppercase block mb-2">Period</label>
+            <select id="payroll-period"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="custom">Custom Range</option>
+                <option value="15th">1st - 15th</option>
+                <option value="30th">16th - End</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- FINAL DATE RANGE (SOURCE OF TRUTH) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+            <label class="text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input type="date" id="startDate"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+        </div>
+
+        <div>
+            <label class="text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input type="date" id="endDate"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+        </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="flex flex-col gap-2">
+        <button onclick="loadPayrollData()"
+            class="bg-[#003D7A] text-white py-2 rounded-lg font-semibold">
+            Calculate Payroll
+        </button>
+
+        <button onclick="saveEntirePayroll()"
+            class="w-full bg-[#003D7A] text-white py-2 rounded-lg font-semibold">
+            Save Entire Payroll
+        </button>
+
+        <button onclick="loadSavedPayroll()"
+            class="w-full border border-[#003D7A] text-[#003D7A] py-2 rounded-lg font-semibold">
+            Load Saved Payroll
+        </button>
+
+        <button onclick="resetToLivePayroll()"
+            class="text-xs text-gray-500 hover:text-red-600 mt-2">
+            Reset to Live Employee Data
+        </button>
+    </div>
+</div>
+            <!-- Compensation Type -->
+            <div class="bg-white rounded-lg shadow p-6 mb-4">
+    <h3 class="text-lg font-bold text-gray-900 mb-4">Employee Search</h3>
+    <div class="relative">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+            <i class="fas fa-search"></i>
+        </span>
+        <input type="text" 
+            id="payroll-search" 
+            onkeyup="handleSearch()" 
+            onkeydown="if(event.key === 'Enter') event.preventDefault();"
+            placeholder="Search Employee ID or Full Name..." 
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+    </div>
+</div>
+
+            <!-- Payroll Summary -->
+           <div class="bg-[#003D7A] text-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-bold mb-4">Payroll Summary</h3>
+    <div class="space-y-4">
+        <div class="border-b border-[#0052A3] pb-3">
+            <p class="text-sm text-gray-300 uppercase tracking-wide">Total Employees</p>
+            <p id="summary-total-employees" class="text-3xl font-bold">0</p>
+        </div>
+        <div class="border-b border-[#0052A3] pb-3">
+            <p class="text-sm text-gray-300 uppercase tracking-wide">Total Net Payroll</p>
+            <p id="summary-total-payroll" class="text-3xl font-bold">₱0</p>
+        </div>
+    </div>
+</div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="col-span-3 space-y-6">
+            <!-- Payroll Header -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Payroll Management</h2>
+                        <p class="text-gray-600 text-sm mt-1">October 2023 • Monthly Cycle</p>
+                    </div>
+                    <div class="flex gap-3">                      
+                        <button onclick="openPayslipModal()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3] flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Generate Payslips
+                        </button>
+                    </div>
+                </div>
+                
+
+                <!-- Tabs -->
+                <div class="flex gap-4 border-b border-gray-200">
+                    <button onclick="switchPayrollTab('masters', this)" class="payroll-tab px-4 py-3 border-b-2 border-[#003D7A] text-[#003D7A] font-medium -mb-px flex items-center gap-2">
+                        <i class="fas fa-check-circle"></i> Masters payroll
+                    </button>
+                    <button onclick="switchPayrollTab('employee', this)" class="payroll-tab px-4 py-3 border-b-2 border-transparent text-gray-600 font-medium hover:text-gray-900 -mb-px flex items-center gap-2">
+                        <i class="fas fa-users"></i> Employee Payroll
+                    </button>
+                    <button onclick="switchPayrollTab('allowances', this)" class="payroll-tab px-4 py-3 border-b-2 border-transparent text-gray-600 font-medium hover:text-gray-900 -mb-px flex items-center gap-2">
+                        <i class="fas fa-coins"></i> Allowances
+                    </button>
+                    <button onclick="switchPayrollTab('deductions', this)" class="payroll-tab px-4 py-3 border-b-2 border-transparent text-gray-600 font-medium hover:text-gray-900 -mb-px flex items-center gap-2">
+                        <i class="fas fa-receipt"></i> Deductions
+                    </button>
+                </div>
+            </div>
+
+
+           <!-- TAB CONTENT: Masters Payroll -->
+            <div id="masters-tab" class="payroll-tab-content">
+             <div  class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="font-semibold text-gray-900">Detailed Payroll Breakdown</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">EMPLOYEE</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">BASIC</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">ALLOWANCES</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">TAX</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">SSS</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">PHILHEALTH</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">PAG-IBIG</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">TOTAL DED.</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">GROSS</th>
+                                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">NET SALARY</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                
+                        </tbody>
+                    </table>
+                </div>
+              </div>
+              <div class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+    <p class="pagination-info text-sm text-gray-600">Showing 0 to 0 of 0 employees</p>
+    <div class="pagination-controls flex items-center gap-2">
+        </div>
+</div>
+            </div>
+            <!-- TAB CONTENT: Employee Payroll -->
+            <div id="employee-tab" class="payroll-tab-content hidden">
+                <!-- Employee Payroll Table -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+    <tr class="bg-gray-50 border-b border-gray-200">
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Employee</th>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Position</th>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Total Work Hours</th>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Total Payable Days</th>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Contract</th>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Base Salary</th>
+        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Allowances</th>
+    </tr>
+</thead>
+                            <tbody>
+                              
+                            </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+    <p class="pagination-info text-sm text-gray-600">Showing 0 to 0 of 0 employees</p>
+    <div class="pagination-controls flex items-center gap-2">
+        </div>
+</div>
+            </div>
+            </div>
+            <!-- TAB CONTENT: Allowances -->
+            <div id="allowances-tab" class="payroll-tab-content hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Employee</th>
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Position</th>
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Housing</th>
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Travel</th>
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Meal</th>
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Hazard Pay</th>
+                                    <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+    <p class="pagination-info text-sm text-gray-600">Showing 0 to 0 of 0 employees</p>
+    <div class="pagination-controls flex items-center gap-2">
+        </div>
+</div>
+                </div>
+            </div>
+            <!-- TAB CONTENT: Deductions -->
+            <div id="deductions-tab" class="payroll-tab-content hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <!-- Deductions Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax (WHT)</th>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PhilHealth</th>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SSS</th>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PagIBIG</th>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Deductions</th>
+                                    <th class="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                   <div class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+    <p class="pagination-info text-sm text-gray-600">Showing 0 to 0 of 0 employees</p>
+    <div class="pagination-controls flex items-center gap-2">
+        </div>
+</div>
+                </div>
+            </div> 
+        </div>
+    </div>
+</div>
+
+<!-- Payslip Generation Modal -->
+<div id="payslipModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div class="border-b border-gray-200 p-6 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-gray-900">Generate Payslips</h3>
+            <button onclick="closePayslipModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm text-gray-600 font-semibold mb-2 block">Month</label>
+                    <input type="month" id="modal-payroll-month" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-600 font-semibold mb-2 block">Period</label>
+                    <select id="modal-payroll-period" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                        <option value="1-15">1st - 15th</option>
+                        <option value="16-end">16th - End of Month</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-sm text-gray-600 font-semibold mb-2 block">Generate For</label>
+                <select id="generate-for-type" onchange="toggleEmployeeList()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    <option value="all">All Employees</option>
+                    <option value="selected">Selected Employees</option>
+                </select>
+            </div>
+
+            <div id="employee-selection-container" class="hidden">
+                <label class="text-xs font-semibold text-gray-500 uppercase mb-2 block">Select Employees</label>
+                <div id="modal-employee-list" class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2"></div>
+            </div>
+
+            <div>
+                <label class="text-sm text-gray-600 font-semibold mb-2 block">Action / Format</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="format" value="individual" checked class="w-4 h-4 text-[#003D7A]">
+                        <span class="text-sm text-gray-700">Download Individual PDFs</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="format" value="email" class="w-4 h-4 text-[#003D7A]">
+                        <span class="text-sm text-gray-700">Send to Employee Email</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="format" value="excel" class="w-4 h-4 text-[#003D7A]">
+                        <span class="text-sm text-gray-700">Export Excel Sheet</span>
+                    </label>
+                </div>
+            </div>
+<div id="payroll-status-container" class="hidden mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+    <div class="flex items-center gap-3">
+        <div class="animate-spin rounded-full h-4 w-4 border-2 border-[#003D7A] border-t-transparent"></div>
+        <p id="payroll-status-text" class="text-sm text-[#003D7A] font-medium">Preparing documents...</p>
+    </div>
+</div>
+            <div class="flex gap-3 border-t border-gray-200 pt-6">
+                <button onclick="closePayslipModal()" class="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50">Cancel</button>
+                <button onclick="generatePayslips()" class="flex-1 bg-[#003D7A] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0052A3] flex items-center justify-center gap-2">
+                    <i class="fas fa-paper-plane"></i> Process
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generating Payslips Modal -->
+<div id="generatingPayslipsModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl p-8 max-w-sm text-center">
+        <!-- Loading Spinner -->
+        <div class="mb-6 flex justify-center">
+            <div class="relative w-16 h-16">
+                <div class="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-transparent border-t-[#003D7A] border-r-[#003D7A] rounded-full animate-spin"></div>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Generating Payslips</h3>
+        <p class="text-gray-600 text-sm mb-6">Please wait while we generate payslips for all employees...</p>
+
+        <!-- Progress Bar -->
+        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div class="bg-[#003D7A] h-full rounded-full" style="animation: progress 2s ease-in-out forwards;"></div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-4">This may take a few moments</p>
+    </div>
+
+    <style>
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+    </style>
+</div>
+
+<!-- Payslip View Modal -->
+<div id="payslipViewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-96 overflow-y-auto">
+        <div class="sticky top-0 bg-gradient-to-r from-[#003D7A] to-[#0052A3] text-white p-6 flex items-center justify-between">
+            <h3 class="text-xl font-bold">Payslip - <span id="payslipEmployee"></span></h3>
+            <button onclick="closePayslipViewModal()" class="text-white text-2xl hover:opacity-80">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-8">
+            <!-- Payslip Content -->
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="text-center border-b border-gray-200 pb-4">
+                    <h2 class="text-2xl font-bold text-gray-900">PAYSLIP</h2>
+                    <p class="text-gray-600">October 2023</p>
+                </div>
+
+                <!-- Employee Info -->
+                <div class="grid grid-cols-2 gap-6 text-sm">
+                    <div>
+                        <p class="text-gray-600 font-semibold">Employee Name</p>
+                        <p class="text-gray-900 font-semibold" id="payslipName"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-semibold">Employee ID</p>
+                        <p class="text-gray-900 font-semibold">EMP001</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-semibold">Position</p>
+                        <p class="text-gray-900 font-semibold">Senior Surgeon</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-semibold">Payroll Period</p>
+                        <p class="text-gray-900 font-semibold">October 2023</p>
+                    </div>
+                </div>
+
+                <!-- Earnings -->
+                <div>
+                    <h4 class="font-bold text-gray-900 mb-3">Earnings</h4>
+                    <table class="w-full text-sm">
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 text-gray-700">Base Salary</td>
+                            <td class="py-2 text-right text-gray-900 font-semibold">₱45,000</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 text-gray-700">Medical Allowance</td>
+                            <td class="py-2 text-right text-gray-900 font-semibold">₱5,000</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 text-gray-700">Housing Allowance</td>
+                            <td class="py-2 text-right text-gray-900 font-semibold">₱3,500</td>
+                        </tr>
+                        <tr class="bg-blue-50">
+                            <td class="py-2 text-gray-900 font-bold">Total Earnings</td>
+                            <td class="py-2 text-right text-[#003D7A] font-bold">₱53,500</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Deductions -->
+                <div>
+                    <h4 class="font-bold text-gray-900 mb-3">Deductions</h4>
+                    <table class="w-full text-sm">
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 text-gray-700">Tax</td>
+                            <td class="py-2 text-right text-gray-900 font-semibold">₱5,000</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="py-2 text-gray-700">Insurance</td>
+                            <td class="py-2 text-right text-gray-900 font-semibold">₱200</td>
+                        </tr>
+                        <tr class="bg-red-50">
+                            <td class="py-2 text-gray-900 font-bold">Total Deductions</td>
+                            <td class="py-2 text-right text-red-600 font-bold">₱5,200</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Net Pay -->
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <p class="text-gray-900 font-bold text-lg">NET PAY</p>
+                        <p class="text-green-600 font-bold text-2xl">₱48,300</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <div class="mt-6 pt-6 border-t border-gray-200 flex gap-3">
+                <button onclick="downloadPayslip()" class="flex-1 bg-[#003D7A] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0052A3] flex items-center justify-center gap-2">
+                    <i class="fas fa-download"></i> Download PDF
+                </button>
+                <button onclick="closePayslipViewModal()" class="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Allowances Modal -->
+<div id="editAllowancesModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex-shrink-0 bg-gradient-to-r from-[#003D7A] to-[#0052A3] p-5 flex items-center justify-between rounded-t-xl">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-coins text-white text-xl"></i>
+                <h3 class="text-white font-bold text-lg">Edit Allowances</h3>
+            </div>
+            <button onclick="closeEditAllowancesModal()" class="text-white/80 hover:text-white transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Employee Info -->
+            <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+                <div class="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg" id="allowancesEmpAvatar">ED</div>
+                <div>
+                    <p class="font-bold text-gray-900 text-lg" id="allowancesEmpName">Dr. Eduard David</p>
+                    <p class="text-sm text-gray-500"><span id="allowancesEmpId">EMP001</span> • <span id="allowancesEmpPosition">Senior Surgeon</span></p>
+                </div>
+            </div>
+
+            <!-- Allowances Form -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Housing Allowance</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                        <input type="number" id="housingAllowance" onchange="calculateAllowancesTotal()" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Travel Allowance</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                        <input type="number" id="travelAllowance" onchange="calculateAllowancesTotal()" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Meal Allowance</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                        <input type="number" id="mealAllowance" onchange="calculateAllowancesTotal()" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Hazard Pay</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                        <input type="number" id="hazardPay" onchange="calculateAllowancesTotal()" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                    </div>
+                </div>
+
+                <!-- Total -->
+                <div class="bg-blue-50 rounded-lg p-4 mt-6">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-gray-900">Total Allowances</span>
+                        <span class="text-xl font-bold text-[#003D7A]" id="allowancesTotal">₱0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex-shrink-0 p-6 bg-gray-50 border-t flex justify-end gap-3 rounded-b-xl">
+            <button onclick="closeEditAllowancesModal()" class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition">
+                Cancel
+            </button>
+            <button onclick="saveAllowances()" class="px-5 py-2.5 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3] transition flex items-center gap-2">
+                <i class="fas fa-save"></i>
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Allowance Success Modal -->
+<div id="allowanceSuccessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
+        <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-check text-green-600 text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Allowances Updated!</h3>
+        <p class="text-gray-600 mb-6">The allowances for <span id="allowanceSuccessName" class="font-semibold">Employee</span> have been updated successfully.</p>
+        <button onclick="closeAllowanceSuccessModal()" class="w-full px-6 py-3 bg-[#003D7A] text-white rounded-lg font-medium hover:bg-[#0052A3] transition">
+            OK
+        </button>
+    </div>
+</div>
+
+<!-- Edit Payroll Modal - STANDALONE -->
+<div id="payrollEditModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" style="display: none; z-index: 9999;">
+    <div class="bg-white rounded-lg w-full max-w-2xl shadow-2xl">
+        <!-- Header -->
+        <div class="border-b border-gray-200 p-6 flex justify-between items-start">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">Edit Payroll Details</h2>
+                <p class="text-sm text-gray-500 mt-1">Employee: <span id="payrollEditEmployeeName" class="font-semibold">Dr. Eduard David</span> (<span id="payrollEditEmployeeId">EMP001</span>)</p>
+            </div>
+            <button type="button" onclick="closePayrollEditModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+            <!-- Earnings & Allowances -->
+            <div class="pb-6 border-b">
+                <h3 class="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                    <span class="w-1 h-5 bg-green-500"></span>
+                    Earnings & Allowances
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Basic Salary (PHP)</label>
+                        <input type="number" id="payrollEditBasicSalary" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="recalculatePayroll()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Total Allowances (PHP)</label>
+                        <input type="number" id="payrollEditAllowances" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="recalculatePayroll()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statutory Deductions -->
+            <div class="pb-6 border-b">
+                <h3 class="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                    <span class="w-1 h-5 bg-red-500"></span>
+                    Statutory Deductions
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Withholding Tax</label>
+                        <input type="number" id="payrollEditTax" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="recalculatePayroll()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">SSS Contribution</label>
+                        <input type="number" id="payrollEditSSS" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="recalculatePayroll()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">PhilHealth</label>
+                        <input type="number" id="payrollEditPhilhealth" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="recalculatePayroll()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Pag-IBIG</label>
+                        <input type="number" id="payrollEditPagibig" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="recalculatePayroll()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="grid grid-cols-3 gap-4 pt-4">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <p class="text-xs text-gray-600 uppercase font-semibold mb-2">Gross Salary</p>
+                    <p id="payrollEditGross" class="text-2xl font-bold text-gray-900">₱53,500</p>
+                </div>
+                <div class="bg-red-50 rounded-lg p-4 text-center">
+                    <p class="text-xs text-red-700 uppercase font-semibold mb-2">Total Deductions</p>
+                    <p id="payrollEditDedTotal" class="text-2xl font-bold text-red-600">₱4,625</p>
+                </div>
+                <div class="bg-[#003D7A] rounded-lg p-4 text-center">
+                    <p class="text-xs text-gray-300 uppercase font-semibold mb-2">Net Salary</p>
+                    <p id="payrollEditNet" class="text-2xl font-bold text-white">₱48,875</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 p-6 flex justify-end gap-3 border-t">
+            <button type="button" onclick="closePayrollEditModal()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100">
+                Cancel
+            </button>
+            <button type="button" onclick="savePayrollEdit()" class="px-6 py-2 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3]">
+                Update Payroll Record
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Payroll Report Modal -->
+<div id="payrollReportModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-gray-50 to-white border-b p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Payroll Report</h2>
+                    <p class="text-gray-600 text-sm mt-1">October 2023 • Monthly Cycle</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="printPayrollReport()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium flex items-center gap-2">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                    <button onclick="exportPayrollPDF()" class="px-4 py-2 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] font-medium flex items-center gap-2">
+                        <i class="fas fa-download"></i> Export PDF
+                    </button>
+                    <button onclick="closePayrollReport()" class="text-gray-400 hover:text-gray-600 p-2">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="overflow-y-auto flex-1 p-6">
+            <!-- Search Bar -->
+            <div class="mb-6">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" placeholder="Search staff, shifts, or documents..." class="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]">
+                </div>
+            </div>
+
+            <!-- Department: Engineering -->
+            <div class="mb-8">
+                <h3 class="text-sm font-bold text-[#003D7A] uppercase tracking-wider mb-4">Department: Engineering</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left px-4 py-3 font-semibold text-gray-700">EMPLOYEE</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-700">POSITION</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">BASE SALARY</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">ALLOWANCES</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">DEDUCTIONS</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">NET PAY</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">ED</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Dr. Eduard David</p>
+                                            <p class="text-xs text-gray-500">EMP001</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">Senior Surgeon</td>
+                                <td class="px-4 py-3 text-right text-gray-900 font-semibold">45,000</td>
+                                <td class="px-4 py-3 text-right text-gray-900">8,500</td>
+                                <td class="px-4 py-3 text-right text-gray-900">5,200</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-900">48,300</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-xs">SB</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Stien Baguhin</p>
+                                            <p class="text-xs text-gray-500">EMP002</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">General Physician</td>
+                                <td class="px-4 py-3 text-right text-gray-900 font-semibold">42,500</td>
+                                <td class="px-4 py-3 text-right text-gray-900">3,000</td>
+                                <td class="px-4 py-3 text-right text-gray-900">2,100</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-900">43,400</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Department: Marketing -->
+            <div class="mb-8">
+                <h3 class="text-sm font-bold text-[#003D7A] uppercase tracking-wider mb-4">Department: Marketing</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left px-4 py-3 font-semibold text-gray-700">EMPLOYEE</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-700">POSITION</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">BASE SALARY</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">ALLOWANCES</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">DEDUCTIONS</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">NET PAY</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-xs">MD</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Mark Dacoco</p>
+                                            <p class="text-xs text-gray-500">EMP003</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">Medical Assistant</td>
+                                <td class="px-4 py-3 text-right text-gray-900 font-semibold">₱30,000</td>
+                                <td class="px-4 py-3 text-right text-gray-900">₱6,200</td>
+                                <td class="px-4 py-3 text-right text-gray-900">₱3,800</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-900">₱32,400</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-xs">DJA</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Dr. Jimray Abulog</p>
+                                            <p class="text-xs text-gray-500">EMP004</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">Medical Assistant</td>
+                                <td class="px-4 py-3 text-right text-gray-900 font-semibold">18,000</td>
+                                <td class="px-4 py-3 text-right text-gray-900">3,500</td>
+                                <td class="px-4 py-3 text-right text-gray-900">2,100</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-900">19,400</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Department: Administration -->
+            <div class="mb-8">
+                <h3 class="text-sm font-bold text-[#003D7A] uppercase tracking-wider mb-4">Department: Administration</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left px-4 py-3 font-semibold text-gray-700">EMPLOYEE</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-700">POSITION</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">BASE SALARY</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">ALLOWANCES</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">DEDUCTIONS</th>
+                                <th class="text-right px-4 py-3 font-semibold text-gray-700">NET PAY</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-pink-600 text-white rounded-full flex items-center justify-center font-bold text-xs">PG</div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Princess Garbin</p>
+                                            <p class="text-xs text-gray-500">EMP005</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">Medical Assistant</td>
+                                <td class="px-4 py-3 text-right text-gray-900 font-semibold">18,000</td>
+                                <td class="px-4 py-3 text-right text-gray-900">3,500</td>
+                                <td class="px-4 py-3 text-right text-gray-900">2,100</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-900">19,400</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="grid grid-cols-3 gap-6 mt-12 pt-6 border-t-2 border-gray-300">
+                <div>
+                    <p class="text-xs text-gray-600 uppercase font-bold tracking-wider mb-2">Total Gross Pay</p>
+                    <p class="text-3xl font-bold text-gray-900">157,500.00</p>
+                    <p class="text-xs text-green-600 mt-2">↑ 12% from last month</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600 uppercase font-bold tracking-wider mb-2">Total Deductions</p>
+                    <p class="text-3xl font-bold text-gray-900">15,800.00</p>
+                    <p class="text-xs text-red-600 mt-2">↓ -4% from last month</p>
+                </div>
+                <div class="bg-[#003D7A] text-white rounded-lg p-6 flex flex-col justify-center">
+                    <p class="text-xs text-gray-300 uppercase font-bold tracking-wider mb-2">Total Net Disbursement</p>
+                    <p class="text-3xl font-bold">141,700.00</p>
+                    <p class="text-xs text-blue-200 mt-2">Processed: 100%</p>
+                    <p class="text-xs text-blue-200">Ref: PAY-2023-OCT</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="editDeductionsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-[#003D7A] text-white">
+            <h3 class="font-bold text-lg">Edit Deductions</h3>
+            <button onclick="closeDeductionsModal()" class="hover:rotate-90 transition-transform"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <div>
+                <p id="deductEmployeeName" class="font-bold text-gray-900 text-lg"></p>
+                <p id="deductEmployeeId" class="text-sm text-gray-500"></p>
+            </div>
+
+            <div class="space-y-3" id="deductionInputs">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Withholding Tax</label>
+                    <input type="number" id="input-tax" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">PhilHealth</label>
+                    <input type="number" id="input-philhealth" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">SSS</label>
+                    <input type="number" id="input-sss" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">PagIBIG</label>
+                    <input type="number" id="input-pagibig" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 bg-gray-50 border-t flex gap-3">
+            <button onclick="closeDeductionsModal()" class="flex-1 py-2 text-sm font-semibold text-gray-600 bg-white border rounded-lg">Cancel</button>
+            <button onclick="saveDeductions()" class="flex-1 py-2 text-sm font-semibold text-white bg-[#003D7A] rounded-lg shadow-md hover:bg-[#002D5A]">Save Changes</button>
+        </div>
+    </div>
+</div>
+
