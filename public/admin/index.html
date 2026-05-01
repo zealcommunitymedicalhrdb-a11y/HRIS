@@ -4073,7 +4073,6 @@ async function fetchAndRenderPayroll() {
         console.error("Error fetching live payroll:", err);
     }
 }
-
 let payrollStats = [];
 
 
@@ -4132,6 +4131,17 @@ function renderTablePage() {
         const grossPay = totalBasic + totalAllow;
         const netPay = grossPay - totalDeduct;
 
+        // Update Totals for the footer
+        totals.basic += totalBasic;
+        totals.allowances += totalAllow;
+        totals.tax += Number(emp.tax || 0);
+        totals.sss += Number(emp.sss || 0);
+        totals.philhealth += Number(emp.philhealth || 0);
+        totals.pagibig += Number(emp.pagibig || 0);
+        totals.deductions += totalDeduct;
+        totals.gross += grossPay;
+        totals.net += netPay;
+
         const initials = emp.fullName ? emp.fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '??';
         let imgSrc = emp.profilePic;
         if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('/')) imgSrc = '/' + imgSrc;
@@ -4174,8 +4184,6 @@ function renderTablePage() {
             </tr>`);
 
         const loanPayment = Number(emp.loanMonthlyPayment || 0);
-        const totalDeductWithLoan = totalDeduct + loanPayment;
-        const netPayWithLoan = grossPay - totalDeductWithLoan;
 
         // Update Totals for the footer
         totals.basic += totalBasic;
@@ -4185,11 +4193,9 @@ function renderTablePage() {
         totals.philhealth += Number(emp.philhealth || 0);
         totals.pagibig += Number(emp.pagibig || 0);
         totals.loan += loanPayment;
-        totals.deductions += totalDeductWithLoan;
+        totals.deductions += totalDeduct;
         totals.gross += grossPay;
-        totals.net += netPayWithLoan;
-
-        // Deductions Tab Row
+        totals.net += netPay;
         deductionsBody.insertAdjacentHTML('beforeend', `
             <tr class="border-b border-gray-200 hover:bg-gray-50">
                 <td class="px-4 py-4">${avatarHTML}</td>
@@ -4215,9 +4221,9 @@ function renderTablePage() {
                 <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.philhealth || 0).toLocaleString()}</td>
                 <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.pagibig || 0).toLocaleString()}</td>
                 <td class="px-4 py-3 text-right text-red-600">-₱${loanPayment.toLocaleString()}</td>
-                <td class="px-4 py-3 text-right text-red-600">-₱${totalDeductWithLoan.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right font-bold text-red-600">-₱${totalDeduct.toLocaleString()}</td>
                 <td class="px-4 py-3 text-right font-semibold">₱${grossPay.toLocaleString()}</td>
-                <td class="px-4 py-3 text-right font-bold text-gray-900">₱${netPayWithLoan.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right font-bold text-gray-900">₱${netPay.toLocaleString()}</td>
             </tr>`);
     });
 
@@ -4405,7 +4411,7 @@ window.saveAllowances = async function() {
     "Allowances Updated",
     `Allowances for ${name} were updated.`,
     "ALLOWANCE",
-    "/admin/pages/payroll.html#allowances"
+    "/admin/payroll.html#allowances"
 );
         } else {
             alert('Error updating allowances: ' + data.message);
@@ -4494,7 +4500,7 @@ window.saveDeductions = async function() {
     "Deductions Updated",
     `Deductions for Employee ID ${payload.employeeId} were updated.`,
     "DEDUCTION",
-    "/admin/pages/payroll.html#deductions"
+    "/admin/payroll.html#deductions"
 );
         } else {
             alert("Failed to save deductions: " + data.message);
@@ -4581,7 +4587,7 @@ await triggerNotification(
     'Payroll Finalized',
     `Monthly payroll for ${payrollMonth} (${payrollPeriod}) has been saved to the database.`,
     'PAYROLL',
-    `/admin/pages/payroll.html#${payrollMonth}-${payrollPeriod}` // link to that payroll period
+    `/admin/payroll.html#${payrollMonth}-${payrollPeriod}` // link to that payroll period
 );
             // ----------------------
             
@@ -6085,7 +6091,7 @@ window.handleCheckIn = async function(isQR = false) {
         'Attendance Logged',
         `${employee.fullName} recorded a ${actionType} at ${timeString}.`,
         'ATTENDANCE',
-        `/admin/pages/attendance.html#employee-${employee._id}`
+        `/admin/attendance.html#employee-${employee._id}`
     );
 
     idInput.value = '';
@@ -6251,7 +6257,7 @@ window.saveAttendanceByDate = async function() {
                 'Attendance Saved',
                 `Attendance for ${selectedDate} has been archived.`,
                 'ATTENDANCE',
-                `/admin/pages/attendance.html#${selectedDate}`
+                `/admin/attendance.html#${selectedDate}`
             );
 
         } else {
