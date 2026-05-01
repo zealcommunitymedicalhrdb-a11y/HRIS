@@ -1643,6 +1643,18 @@
 
                 console.log('📅 Payroll page loaded, calling loadEmployeePayslips directly');
                 loadEmployeePayslips();
+                loadLoanRequests();
+
+                const loanAmountInput = document.getElementById('loanAmount');
+                const repaymentPeriodInput = document.getElementById('repaymentPeriod');
+                if (loanAmountInput) {
+                    loanAmountInput.addEventListener('input', calculateMonthlyPayment);
+                }
+                if (repaymentPeriodInput) {
+                    repaymentPeriodInput.addEventListener('change', calculateMonthlyPayment);
+                }
+                // Ensure preview updates immediately if fields already have values
+                calculateMonthlyPayment();
 
                 async function loadEmployeePayslips() {
                     console.log('🔄 Starting loadEmployeePayslips...');
@@ -3164,8 +3176,50 @@ window.closeDownloadSuccessModal = function() {
                 updatePerformanceReviews(historyData.surveyHistory);
             }
 
+            await loadEmployeeMemos(employeeId);
         } catch (error) {
             console.error("Error loading performance data:", error);
+        }
+    }
+
+    async function loadEmployeeMemos(employeeId) {
+        try {
+            const response = await fetch(`/api/performance/memos/${employeeId}`);
+            if (!response.ok) {
+                throw new Error('Unable to load performance memos');
+            }
+            const data = await response.json();
+            const memos = data.memos || [];
+            const memoList = document.getElementById('employeeMemoList');
+
+            if (!memoList) return;
+            if (!memos.length) {
+                memoList.innerHTML = '<p class="text-sm text-gray-500">No performance memos have been uploaded yet.</p>';
+                return;
+            }
+
+            memoList.innerHTML = memos.slice(0, 5).map(memo => {
+                const createdAt = new Date(memo.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                const filename = memo.originalName || memo.fileName || 'Performance Memo';
+                return `
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="font-semibold text-gray-900">${memo.subject || 'Performance Memo'}</p>
+                                <p class="text-xs text-gray-500">${createdAt}</p>
+                            </div>
+                            <a href="${memo.filePath}" target="_blank" class="text-[#003D7A] text-sm font-semibold">Download</a>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">${memo.message || 'No additional details provided.'}</p>
+                    </div>
+                `;
+            }).join('');
+        } catch (err) {
+            console.error('Failed fetching performance memos:', err);
+            const memoList = document.getElementById('employeeMemoList');
+            if (memoList) {
+                memoList.innerHTML = '<p class="text-sm text-gray-500">Unable to load memos at this time.</p>';
+            }
         }
     }
 
@@ -3915,7 +3969,262 @@ window.closeDownloadSuccessModal = function() {
             loadConversations();
         }
     });
+
+    // === LOAN REQUEST FUNCTIONS ===
     
+    let loanRequestModalData = null;
+
+    // Open Loan Request Modal
+    window.openLoanRequestModal = function() {
+        const modal = document.getElementById('loanRequestModal');
+        if (!modal) {
+            console.error('Loan request modal not found');
+            return;
+        }
+        modal.classList.remove('hidden');
+        // Reset form
+        const form = modal.querySelector('form');
+        if (form) form.reset();
+        document.getElementById('monthlyPaymentDisplay').textContent = '₱0.00';
+    };
+
+    // Close Loan Request Modal
+    window.closeLoanRequestModal = function() {
+        const modal = document.getElementById('loanRequestModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            const form = modal.querySelector('form');
+            if (form) form.reset();
+        }
+    };
+
+    // Calculate monthly payment
+    window.calculateMonthlyPayment = function() {
+        const amount = parseFloat(document.getElementById('loanAmount')?.value || 0);
+        const period = parseInt(document.getElementById('repaymentPeriod')?.value || 0);
+        
+        if (amount > 0 && period > 0) {
+            // Simple division: amount / number of months
+            const monthlyPayment = amount / period;
+            document.getElementById('monthlyPaymentDisplay').textContent = 
+                '₱' + monthlyPayment.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            document.getElementById('monthlyPaymentDisplay').textContent = '₱0.00';
+        }
+    };
+
+    window.submitLoanRequest = async function () {
+    try {
+        const employeeId = localStorage.getItem('employeeId');
+        if (!employeeId) {
+            alert('Employee ID not found');
+            return;
+        }
+
+        const loanType = document.getElementById('loanType')?.value || '';
+        const loanAmount = parseFloat(document.getElementById('loanAmount')?.value || 0);
+        const repaymentMonths = parseInt(document.getElementById('repaymentPeriod')?.value || 0);
+        const loanReason = document.getElementById('loanReason')?.value || '';
+
+        if (!loanType) {
+            alert('Please select a loan type');
+            return;
+        }
+
+        if (loanAmount <= 0) {
+            alert('Please enter a valid loan amount');
+            return;
+        }
+
+        if (repaymentMonths <= 0) {
+            alert('Please select repayment period');
+            return;
+        }
+
+        if (!loanReason.trim()) {
+            alert('Please enter loan reason');
+            return;
+        }
+
+        const response = await fetch('/api/employee/request-loan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                employeeId,
+                loanType,
+                loanAmount,
+                repaymentMonths,
+                loanReason
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Loan request submitted successfully!');
+            closeLoanRequestModal();
+            loadLoanRequests();
+        } else {
+            alert(data.message || 'Failed to submit loan request');
+        }
+
+    } catch (error) {
+        console.error('Loan submit error:', error);
+        alert('Something went wrong');
+    }
+};
+
+    // Load loan requests for employee
+    window.loadLoanRequests = async function() {
+        try {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) return;
+
+            const response = await fetch(`/api/employee/pending-loans/${employeeId}`);
+            const data = await response.json();
+
+            const container = document.getElementById('loanListContainer');
+            if (!container) return;
+
+            if (data.success && data.pendingLoans && data.pendingLoans.length > 0) {
+    renderLoanList(data.pendingLoans);
+}    else {
+                container.innerHTML = `
+                    <div class="p-6 text-center text-gray-500">
+                        <i class="fas fa-hand-holding-usd text-3xl mb-2 text-gray-300"></i>
+                        <p class="font-medium">No loan requests yet</p>
+                        <p class="text-sm">Click "Request Loan" to submit your first loan request</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading loan requests:', error);
+        }
+    };
+
+    window.renderLoanList = function (loans) {
+    const container = document.getElementById('loanListContainer');
+    if (!container) return;
+
+    let html = '';
+
+    loans.forEach(loan => {
+        const submittedDate = new Date(loan.submittedAt || loan.createdAt || Date.now())
+            .toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+
+        let statusBadgeClass = 'bg-yellow-100 text-yellow-700';
+        let statusIcon = 'fa-hourglass-half';
+
+        if (loan.status === 'approved') {
+            statusBadgeClass = 'bg-green-100 text-green-700';
+            statusIcon = 'fa-check-circle';
+        } else if (loan.status === 'rejected') {
+            statusBadgeClass = 'bg-red-100 text-red-700';
+            statusIcon = 'fa-times-circle';
+        }
+
+        // ✅ Safe computed values
+        const repaymentMonths = loan.repaymentMonths || loan.repaymentPeriod || 0;
+        const monthlyPayment = loan.monthlyRepayment 
+            || (repaymentMonths > 0 ? loan.loanAmount / repaymentMonths : 0);
+
+        // ✅ Approval / rejection details (fixed to match backend)
+        let approvalDetails = '';
+
+        if (loan.status === 'approved') {
+            approvalDetails = `
+                <p class="text-xs text-gray-600 mt-2">
+                    <strong>Approved Amount:</strong> ₱${(loan.appliedLoanAmount || loan.loanAmount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </p>
+                <p class="text-xs text-gray-600">
+                    <strong>Monthly Repayment:</strong> ₱${monthlyPayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </p>
+            `;
+        }
+
+        if (loan.status === 'rejected') {
+            approvalDetails = `
+                <p class="text-xs text-gray-600 mt-2">
+                    <strong>Reason:</strong> ${loan.rejectionReason || 'No reason provided'}
+                </p>
+            `;
+        }
+
+        html += `
+            <div class="p-4 border border-gray-200 rounded-lg">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-start gap-3">
+                        <div class="bg-blue-100 p-2 rounded-lg">
+                            <i class="fas fa-hand-holding-usd text-blue-600"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <p class="font-semibold text-gray-900">
+                                    ${loan.loanType || 'Loan Request'}
+                                </p>
+                                <span class="${statusBadgeClass} text-xs px-2 py-1 rounded-full font-medium">
+                                    <i class="fas ${statusIcon} mr-1"></i>
+                                    ${loan.status ? loan.status.charAt(0).toUpperCase() + loan.status.slice(1) : 'Pending'}
+                                </span>
+                            </div>
+
+                            <p class="text-sm text-gray-600 mt-1">
+                                <strong>Amount:</strong> ₱${(loan.loanAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                            </p>
+
+                            <p class="text-xs text-gray-600">
+                                <strong>Monthly Payment:</strong> ₱${monthlyPayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                            </p>
+
+                            <p class="text-xs text-gray-600">
+                                <strong>Repayment Period:</strong> ${repaymentMonths} months
+                            </p>
+
+                            <p class="text-xs text-gray-600">
+                                <strong>Reason:</strong> ${loan.loanReason || 'N/A'}
+                            </p>
+
+                            ${approvalDetails}
+
+                            <p class="text-xs text-gray-400 mt-2">
+                                Submitted: ${submittedDate}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+};
+
+    // Add event listeners for loan request form
+    document.addEventListener('DOMContentLoaded', function() {
+        const loanAmountInput = document.getElementById('loanAmount');
+        const repaymentPeriodInput = document.getElementById('repaymentPeriod');
+        
+        if (loanAmountInput) {
+            loanAmountInput.addEventListener('input', calculateMonthlyPayment);
+        }
+        if (repaymentPeriodInput) {
+            repaymentPeriodInput.addEventListener('change', calculateMonthlyPayment);
+        }
+    });
+
+    // Close modal on outside click
+    document.addEventListener('click', function(e) {
+        const loanModal = document.getElementById('loanRequestModal');
+        if (loanModal && e.target === loanModal) {
+            closeLoanRequestModal();
+        }
+    });
     
     </script>
 </body>

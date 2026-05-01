@@ -325,6 +325,25 @@ const pendingProfileChangeSchema = new mongoose.Schema({
 
 const PendingProfileChange = mongoose.model('PendingProfileChange', pendingProfileChangeSchema, 'pendingProfileChanges');
 
+// --- 5. LOAN REQUEST SCHEMA ---
+const loanRequestSchema = new mongoose.Schema({
+    employeeId: { type: String, required: true },
+    loanAmount: { type: Number, required: true },
+    loanReason: { type: String, required: true },
+    loanType: { type: String, enum: ['personal', 'emergency', 'medical', 'education', 'home', 'vehicle', 'other'], required: true },
+    repaymentMonths: { type: Number, required: true },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    submittedAt: { type: Date, default: Date.now },
+    approvedAt: Date,
+    approvedBy: String,
+    rejectionReason: String,
+    notes: String,
+    appliedLoanAmount: Number,
+    monthlyRepayment: Number
+});
+
+const LoanRequest = mongoose.model('LoanRequest', loanRequestSchema, 'loanRequests');
+
 
 
 // 1. DEFINE STORAGE FIRST
@@ -346,7 +365,7 @@ const storage = multer.diskStorage({
 // 2. NOW INITIALIZE MULTER (Using the storage defined above)
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 } 
+    limits: { fileSize: 10 * 1024 * 1024 } // 10 MB max for memo uploads
 });
 
 // 3. DEFINE YOUR FIELDS
@@ -1598,6 +1617,297 @@ app.get('/api/admin/recent-changes', async (req, res) => {
     }
 });
 
+// ==========================================
+// --- LOAN REQUEST ENDPOINTS ---
+// ==========================================
+
+// EMPLOYEE: Submit a loan request
+app.post('/api/employee/request-loan', async (req, res) => {
+    try {
+        const { employeeId, loanAmount, loanReason, loanType, repaymentMonths } = req.body;
+
+        if (!employeeId || !loanAmount || !loanReason || !loanType || !repaymentMonths) {
+            return res.status(400).json({ success: false, message: "Missing required fields" });
+        }
+
+        // Create a new loan request record
+        const loanRequest = new LoanRequest({
+            employeeId: employeeId.toUpperCase(),
+            loanAmount,
+            loanReason,
+            loanType,
+            repaymentMonths,
+            status: 'pending',
+            submittedAt: new Date()
+        });
+
+        await loanRequest.save();
+
+        // Create notification for admins
+        const adminNotification = new Notification({
+            title: 'New Loan Request',
+            message: `Employee ${employeeId} requested a loan of ₱${loanAmount.toLocaleString()} (${loanType})`,
+            type: 'info',
+            recipientRole: 'admin',
+            url: '/admin/pages/dashboard.html'
+        });
+        await adminNotification.save();
+
+        // Broadcast notification to all connected admins
+        io.emit('new-notification', adminNotification);
+
+        res.json({
+            success: true,
+            message: "Loan request submitted successfully",
+            loanId: loanRequest._id
+        });
+
+    } catch (err) {
+        console.error("Submit Loan Request Error:", err);
+        res.status(500).json({ success: false, message: "Error submitting loan request", error: err.message });
+    }
+});
+
+// EMPLOYEE: Get pending loan requests for employee
+app.get('/api/employee/pending-loans/:employeeId', async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+
+        const pendingLoans = await LoanRequest.find({
+            employeeId: employeeId.toUpperCase()
+        }).sort({ submittedAt: -1 });
+
+        res.json({
+            success: true,
+            pendingLoans
+        });
+
+    } catch (err) {
+        console.error("Fetch Employee Pending Loans Error:", err);
+        res.status(500).json({ success: false, message: "Error fetching pending loans", error: err.message });
+    }
+});
+
+// ADMIN: Get all pending loan requests
+app.get('/api/admin/pending-loans', async (req, res) => {
+    try {
+        const pendingLoans = await LoanRequest.find({ status: 'pending' })
+            .sort({ submittedAt: -1 });
+
+        // For each pending loan, get employee details
+        const loansWithDetails = await Promise.all(pendingLoans.map(async (loan) => {
+            const employeeId = loan.employeeId;
+            
+            // Find employee in appropriate collection
+            const collections = [Admin, Doctor, Guard, Nurse, Staff, Accounting];
+            let employee = null;
+            let collectionName = '';
+
+            for (const collection of collections) {
+                employee = await collection.findOne({ employeeId: employeeId });
+                if (employee) {
+                    collectionName = collection.modelName.toLowerCase();
+                    break;
+                }
+            }
+
+            return {
+                ...loan.toObject(),
+                employeeDetails: {
+                    fullName: employee ? `${employee.firstName || ''} ${employee.lastName || ''}`.trim() : 'Unknown',
+                    employeeId: employeeId,
+                    department: employee?.department || collectionName,
+                    position: employee?.position || 'Staff',
+                    profilePic: employee?.profilePic || '/uploads/profiles/default-avatar.png'
+                }
+            };
+        }));
+
+        res.json({
+            success: true,
+            pendingLoans: loansWithDetails
+        });
+    } catch (err) {
+        console.error("Fetch Admin Pending Loans Error:", err);
+        res.status(500).json({ success: false, message: "Error fetching pending loans", error: err.message });
+    }
+});
+
+// ADMIN: Get single loan request details
+app.get('/api/admin/pending-loans/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const loan = await LoanRequest.findById(id);
+
+        if (!loan) {
+            return res.status(404).json({ success: false, message: "Loan request not found" });
+        }
+
+        // Get employee details
+        const employeeId = loan.employeeId;
+        let employee = null;
+        let collectionName = 'Unknown';
+
+        // Try to find employee in different collections
+        const collections = [Admin, Doctor, Nurse, Guard, Staff, Accounting];
+        for (const collection of collections) {
+            try {
+                employee = await collection.findOne({ employeeId: employeeId });
+                if (employee) {
+                    collectionName = collection.modelName.toLowerCase();
+                    break;
+                }
+            } catch (err) {
+                continue;
+            }
+        }
+
+        const loanWithDetails = {
+            ...loan.toObject(),
+            employeeDetails: {
+                fullName: employee ? `${employee.firstName || ''} ${employee.lastName || ''}`.trim() : 'Unknown',
+                employeeId: employeeId,
+                department: employee?.department || collectionName,
+                position: employee?.position || 'Staff',
+                profilePic: employee?.profilePic || '/uploads/profiles/default-avatar.png'
+            }
+        };
+
+        res.json({
+            success: true,
+            ...loanWithDetails
+        });
+    } catch (err) {
+        console.error("Fetch Single Loan Request Error:", err);
+        res.status(500).json({ success: false, message: "Error fetching loan details", error: err.message });
+    }
+});
+
+// ADMIN: Approve loan request
+app.put('/api/admin/pending-loans/approve/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { adminId, approvedLoanAmount } = req.body; // Admin can reduce the amount if needed
+
+        const loanRequest = await LoanRequest.findById(id);
+        if (!loanRequest) {
+            return res.status(404).json({ success: false, message: "Loan request not found" });
+        }
+
+        // Update the loan request
+        loanRequest.status = 'approved';
+        loanRequest.approvedAt = new Date();
+        loanRequest.approvedBy = adminId;
+        loanRequest.appliedLoanAmount = approvedLoanAmount || loanRequest.loanAmount;
+        loanRequest.monthlyRepayment = Math.round((approvedLoanAmount || loanRequest.loanAmount) / loanRequest.repaymentMonths);
+        await loanRequest.save();
+
+        // Create notification for employee
+        const notification = new Notification({
+            title: 'Loan Request Approved',
+            message: `Your loan request for ₱${loanRequest.appliedLoanAmount.toLocaleString()} has been approved. Monthly repayment: ₱${loanRequest.monthlyRepayment.toLocaleString()}`,
+            type: 'success',
+            recipientId: loanRequest.employeeId,
+            recipientRole: 'employee',
+            url: '/employee/pages/payroll.html'
+        });
+        await notification.save();
+
+        // Broadcast notification
+        io.emit('new-notification', notification);
+
+        res.json({ success: true, message: "Loan request approved successfully", loan: loanRequest });
+    } catch (err) {
+        console.error("Approve Loan Request Error:", err);
+        res.status(500).json({ success: false, message: "Error approving loan request", error: err.message });
+    }
+});
+
+// ADMIN: Reject loan request
+app.put('/api/admin/pending-loans/reject/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { adminId, rejectionReason } = req.body;
+
+        const loanRequest = await LoanRequest.findById(id);
+        if (!loanRequest) {
+            return res.status(404).json({ success: false, message: "Loan request not found" });
+        }
+
+        // Update the loan request
+        loanRequest.status = 'rejected';
+        loanRequest.approvedAt = new Date();
+        loanRequest.approvedBy = adminId;
+        loanRequest.rejectionReason = rejectionReason;
+        await loanRequest.save();
+
+        // Create notification for employee
+        const notification = new Notification({
+            title: 'Loan Request Rejected',
+            message: `Your loan request was rejected. Reason: ${rejectionReason || 'See admin for details'}`,
+            type: 'warning',
+            recipientId: loanRequest.employeeId,
+            recipientRole: 'employee'
+        });
+        await notification.save();
+
+        // Broadcast notification
+        io.emit('new-notification', notification);
+
+        res.json({ success: true, message: "Loan request rejected successfully" });
+    } catch (err) {
+        console.error("Reject Loan Request Error:", err);
+        res.status(500).json({ success: false, message: "Error rejecting loan request", error: err.message });
+    }
+});
+
+// ADMIN: Get recent approved/rejected loans
+app.get('/api/admin/recent-loans', async (req, res) => {
+    try {
+        const recentLoans = await LoanRequest.find({
+            status: { $in: ['approved', 'rejected'] }
+        })
+        .sort({ approvedAt: -1 })
+        .limit(20);
+
+        // For each recent loan, get employee details
+        const loansWithDetails = await Promise.all(recentLoans.map(async (loan) => {
+            const employeeId = loan.employeeId;
+            
+            // Find employee in appropriate collection
+            const collections = [Admin, Doctor, Guard, Nurse, Staff, Accounting];
+            let employee = null;
+            let collectionName = '';
+
+            for (const collection of collections) {
+                employee = await collection.findOne({ employeeId: employeeId });
+                if (employee) {
+                    collectionName = collection.modelName.toLowerCase();
+                    break;
+                }
+            }
+
+            return {
+                ...loan.toObject(),
+                employeeDetails: {
+                    fullName: employee ? `${employee.firstName || ''} ${employee.lastName || ''}`.trim() : 'Unknown',
+                    employeeId: employeeId,
+                    department: employee?.department || collectionName,
+                    position: employee?.position || 'Staff'
+                }
+            };
+        }));
+
+        res.json({
+            success: true,
+            recentLoans: loansWithDetails
+        });
+    } catch (err) {
+        console.error("Fetch Recent Loans Error:", err);
+        res.status(500).json({ success: false, message: "Error fetching recent loans", error: err.message });
+    }
+});
+
 // --- 6. UPDATED SYNC ROUTE ---
 app.get('/api/admin/sync-all', async (req, res) => {
     try {
@@ -1692,7 +2002,7 @@ app.get('/api/admin/migrate-all', async (req, res) => {
 app.get('/api/employees/list', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
         const { search, role, status } = req.query;
@@ -1880,6 +2190,32 @@ app.get('/api/attendance', async (req, res) => {
     } catch (err) {
         console.error("Fetch Error:", err);
         res.status(500).json({ success: false, message: "Error fetching records" });
+    }
+});
+
+// GET: Fetch attendance records for a specific employee by month and period
+app.get('/api/attendance/employee/:employeeId', async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { month, period } = req.query; // e.g., month=2026-04, period=1-15
+
+        if (!month || !period) {
+            return res.status(400).json({ success: false, message: 'Month and period are required' });
+        }
+
+        const [year, monthNum] = month.split('-');
+        const startDate = period === '1-15' ? new Date(year, monthNum - 1, 1) : new Date(year, monthNum - 1, 16);
+        const endDate = period === '1-15' ? new Date(year, monthNum - 1, 15) : new Date(year, monthNum, 0); // Last day of month
+
+        const records = await Attendance.find({
+            empId: employeeId,
+            date: { $gte: startDate.toISOString().split('T')[0], $lte: endDate.toISOString().split('T')[0] }
+        }).sort({ date: 1 });
+
+        res.json({ success: true, attendance: records });
+    } catch (err) {
+        console.error("Fetch Attendance Error:", err);
+        res.status(500).json({ success: false, message: "Error fetching attendance records" });
     }
 });
 
@@ -2338,6 +2674,17 @@ app.get('/api/employees/payroll-list', async (req, res) => {
                 }
             },
             {
+                $lookup: {
+                    from: "loanRequests",
+                    let: { employeeId: "$employeeId" },
+                    pipeline: [
+                        { $match: { $expr: { $and: [ { $eq: ["$employeeId", "$$employeeId"] }, { $eq: ["$status", "approved"] } ] } } },
+                        { $group: { _id: null, totalMonthlyRepayment: { $sum: { $ifNull: ["$monthlyRepayment", 0] } } } }
+                    ],
+                    as: "approvedLoans"
+                }
+            },
+            {
                 $project: {
                     employeeId: 1,
                     fullName: { $concat: [{ $ifNull: ["$profile.firstName", "Unknown"]}, " ", { $ifNull: ["$profile.lastName", "User"]}] },
@@ -2367,12 +2714,14 @@ app.get('/api/employees/payroll-list', async (req, res) => {
                             { $ifNull: ["$profile.hazardPay", 0] }
                         ]
                     },
+                    loanMonthlyPayment: { $ifNull: [ { $arrayElemAt: ["$approvedLoans.totalMonthlyRepayment", 0] }, 0 ] },
                     totalDeductions: {
                         $add: [
                             { $ifNull: ["$profile.tax", 0] },
                             { $ifNull: ["$profile.philhealth", 0] },
                             { $ifNull: ["$profile.sss", 0] },
-                            { $ifNull: ["$profile.pagibig", 0] }
+                            { $ifNull: ["$profile.pagibig", 0] },
+                            { $ifNull: [ { $arrayElemAt: ["$approvedLoans.totalMonthlyRepayment", 0] }, 0 ] }
                         ]
                     },
 
@@ -3695,6 +4044,120 @@ const performanceArchiveSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 const PerformanceArchive = mongoose.model('PerformanceArchive', performanceArchiveSchema);
+
+const performanceMemoSchema = new mongoose.Schema({
+    empId: { type: String, required: true },
+    email: { type: String },
+    uploadedBy: { type: String, default: 'admin' },
+    subject: { type: String, default: 'Performance Memo' },
+    message: { type: String, default: '' },
+    fileName: String,
+    originalName: String,
+    filePath: String,
+    createdAt: { type: Date, default: Date.now }
+});
+const PerformanceMemo = mongoose.model('PerformanceMemo', performanceMemoSchema);
+
+// Performance Memo Upload + Email Notification
+app.post('/api/performance/memo', (req, res) => {
+    upload.single('memoFile')(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            const errorMessage = err.code === 'LIMIT_FILE_SIZE'
+                ? 'Memo file too large. Maximum file size is 10MB.'
+                : `Multer error: ${err.message}`;
+            console.error('[Performance Memo] Multer error', err);
+            return res.status(400).json({ success: false, error: errorMessage });
+        }
+
+        if (err) {
+            console.error('[Performance Memo] upload error', err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
+
+        console.log('[Performance Memo] incoming upload', { employeeId: req.body.employeeId, file: req.file?.originalname });
+        try {
+            const { employeeId, subject, message } = req.body;
+
+            if (!employeeId) {
+                return res.status(400).json({ success: false, error: 'employeeId is required' });
+            }
+            if (!req.file) {
+                return res.status(400).json({ success: false, error: 'Memo file is required' });
+            }
+
+            const user = await User.findOne({ employeeId }).lean();
+            const email = user?.email || null;
+
+            const memo = new PerformanceMemo({
+                empId: employeeId,
+                email,
+                uploadedBy: 'admin',
+                subject: subject || 'Performance Memo',
+                message: message || '',
+                fileName: req.file.filename,
+                originalName: req.file.originalname,
+                filePath: `/uploads/documents/${req.file.filename}`
+            });
+
+            await memo.save();
+
+            if (email) {
+                const mailOptions = {
+                    from: '"Zeal Community HR" <zealcommunitymedicalhrdb@gmail.com>',
+                    to: email,
+                    subject: `[Performance Memo] ${memo.subject}`,
+                    html: `
+                        <div style="font-family: sans-serif; line-height: 1.5; color: #333;">
+                            <h2 style="color: #003D7A;">New Performance Memo Uploaded</h2>
+                            <p>Hello ${user?.fullName || employeeId},</p>
+                            <p>A new performance memo has been uploaded for you. ${message ? `Message: ${message}` : ''}</p>
+                            <p>You can download the memo from the attached file or visit your performance dashboard.</p>
+                            <p style="font-size: 12px; color: #888; margin-top: 1rem;">This is an automated notification from the Zeal Community Medical Mission Foundation system.</p>
+                        </div>
+                    `,
+                    attachments: [
+                        {
+                            filename: req.file.originalname,
+                            path: req.file.path
+                        }
+                    ]
+                };
+
+                try {
+                    await transporter.sendMail(mailOptions);
+                } catch (emailError) {
+                    console.error('Failed to send memo email:', emailError);
+                }
+            }
+
+            const notification = new Notification({
+                title: 'New performance memo uploaded',
+                message: `${user?.fullName || employeeId} has a new memo: ${memo.subject}`,
+                type: 'performance-memo',
+                recipientId: employeeId,
+                recipientRole: 'employee',
+                url: '/employee/pages/performance.html'
+            });
+            await notification.save();
+            io.emit('new-notification', notification);
+
+            res.json({ success: true, memo });
+        } catch (err) {
+            console.error('Error saving performance memo:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+});
+
+app.get('/api/performance/memos/:empId', async (req, res) => {
+    try {
+        const { empId } = req.params;
+        const memos = await PerformanceMemo.find({ empId }).sort({ createdAt: -1 }).lean();
+        res.json({ memos });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // 2. The POST Route
 app.post('/api/survey-response', async (req, res) => {

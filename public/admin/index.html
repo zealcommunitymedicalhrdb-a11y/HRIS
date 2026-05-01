@@ -807,11 +807,106 @@ function closeSidebar() {
 
         }
 
-        // function initializePageScripts(page){
-        //     if(page === "employees"){
-        //         requestAnimationFrame(loadEmployees);
-        //     }
-        // }
+        function initializePageScripts(page) {
+            if (page === 'payroll') {
+                const monthInput = document.getElementById('payroll-month');
+                const periodInput = document.getElementById('payroll-period');
+                const startInput = document.getElementById('startDate');
+                const endInput = document.getElementById('endDate');
+
+                if (monthInput) {
+                    monthInput.addEventListener('change', () => {
+                        console.log('[Payroll] month selected:', monthInput.value);
+                        updatePayrollDateRange();
+                    });
+                }
+
+                if (periodInput) {
+                    periodInput.addEventListener('change', () => {
+                        console.log('[Payroll] period selected:', periodInput.value);
+                        updatePayrollDateRange();
+                    });
+                }
+
+                if (startInput) {
+                    startInput.addEventListener('change', () => {
+                        if (periodInput) periodInput.value = 'custom';
+                        console.log('[Payroll] startDate manually changed, switching to custom range');
+                    });
+                }
+
+                if (endInput) {
+                    endInput.addEventListener('change', () => {
+                        if (periodInput) periodInput.value = 'custom';
+                        console.log('[Payroll] endDate manually changed, switching to custom range');
+                    });
+                }
+
+                console.log('[Payroll] payroll page scripts initialized');
+                updatePayrollDateRange();
+            } else if (page === 'dashboard') {
+                console.log('[Dashboard] initializing dashboard page scripts');
+                loadPendingApprovals();
+                loadPendingSwapRequests();
+                loadPendingLeaveRequests();
+                loadPendingTimeCorrections();
+                loadRecentApprovals();
+                if (typeof loadPendingLoans === 'function') {
+                    loadPendingLoans();
+                }
+            }
+        }
+
+        function updatePayrollDateRange() {
+            const monthInput = document.getElementById('payroll-month');
+            const periodInput = document.getElementById('payroll-period');
+            const startInput = document.getElementById('startDate');
+            const endInput = document.getElementById('endDate');
+
+            if (!monthInput || !periodInput || !startInput || !endInput) {
+                console.log('[Payroll] update skipped: missing input elements');
+                return;
+            }
+
+            const monthValue = monthInput.value;
+            const periodValue = periodInput.value;
+
+            if (!monthValue) {
+                console.log('[Payroll] update skipped: no month selected');
+                return;
+            }
+
+            if (periodValue === 'custom') {
+                console.log('[Payroll] custom period selected; date fields remain manual');
+                return;
+            }
+
+            const [year, month] = monthValue.split('-');
+            if (!year || !month) {
+                console.log('[Payroll] update skipped: invalid month format', monthValue);
+                return;
+            }
+
+            const paddedMonth = month.padStart(2, '0');
+            const monthIndex = Number(month) - 1;
+            const lastDay = new Date(Number(year), monthIndex + 1, 0).getDate();
+            const paddedLastDay = String(lastDay).padStart(2, '0');
+
+            if (periodValue === '15th') {
+                startInput.value = `${year}-${paddedMonth}-01`;
+                endInput.value = `${year}-${paddedMonth}-15`;
+            } else if (periodValue === '30th') {
+                startInput.value = `${year}-${paddedMonth}-16`;
+                endInput.value = `${year}-${paddedMonth}-${paddedLastDay}`;
+            }
+
+            console.log('[Payroll] auto-filled dates:', {
+                month: monthValue,
+                period: periodValue,
+                start: startInput.value,
+                end: endInput.value,
+            });
+        }
 
 async function loadEmployees(page = 1) {
     try {
@@ -1209,6 +1304,44 @@ function updatePagination(data) {
                setTimeout(loadEmployees, 200);
            }
 
+            if (page === 'payroll') {
+                const monthInput = document.getElementById('payroll-month');
+                const periodInput = document.getElementById('payroll-period');
+                const startInput = document.getElementById('startDate');
+                const endInput = document.getElementById('endDate');
+
+                if (monthInput) {
+                    monthInput.addEventListener('change', () => {
+                        console.log('[Payroll] month selected:', monthInput.value);
+                        updatePayrollDateRange();
+                    });
+                }
+
+                if (periodInput) {
+                    periodInput.addEventListener('change', () => {
+                        console.log('[Payroll] period selected:', periodInput.value);
+                        updatePayrollDateRange();
+                    });
+                }
+
+                if (startInput) {
+                    startInput.addEventListener('change', () => {
+                        if (periodInput) periodInput.value = 'custom';
+                        console.log('[Payroll] startDate manually changed, switching to custom range');
+                    });
+                }
+
+                if (endInput) {
+                    endInput.addEventListener('change', () => {
+                        if (periodInput) periodInput.value = 'custom';
+                        console.log('[Payroll] endDate manually changed, switching to custom range');
+                    });
+                }
+
+                console.log('[Payroll] payroll page scripts initialized');
+                updatePayrollDateRange();
+            }
+
             if (page === 'dashboard') {
 let kpiChartInstance = null;
 window.currentTopEmployee = null;
@@ -1534,6 +1667,155 @@ async function loadPendingSwapRequests() {
         if (container) {
             container.innerHTML = '<div class="text-center text-red-500 py-8"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>Failed to load swap requests</p></div>';
         }
+    }
+}
+
+async function loadPendingLoans() {
+    try {
+        const response = await fetch('/api/admin/pending-loans');
+        const data = await response.json();
+        const container = document.getElementById('pendingLoansContainer');
+        if (!container) return;
+
+        if (!data.success || !Array.isArray(data.pendingLoans) || data.pendingLoans.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-8"><i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i><p>No pending loan requests</p></div>';
+            return;
+        }
+
+        let html = '';
+        data.pendingLoans.forEach(loan => {
+            const submittedDate = new Date(loan.submittedAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const employee = loan.employeeDetails || {};
+            const loanAmount = loan.loanAmount || 0;
+            const repaymentMonths = loan.repaymentMonths || 0;
+            const monthlyRepayment = loan.monthlyRepayment || (repaymentMonths > 0 ? loanAmount / repaymentMonths : 0);
+
+            html += `
+                <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate">${employee.fullName || employee.employeeId || 'Employee Loan Request'}</p>
+                                    <p class="text-xs text-gray-500 truncate">${employee.department || 'N/A'} • ${employee.position || 'Staff'}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
+                                <div>
+                                    <p class="font-medium text-gray-900">Loan Type</p>
+                                    <p>${loan.loanType || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Requested Amount</p>
+                                    <p>₱${loanAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Repayment Period</p>
+                                    <p>${repaymentMonths} months</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Approx. Monthly</p>
+                                    <p>₱${monthlyRepayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                            </div>
+
+                            <p class="text-sm text-gray-700 mt-4"><strong>Reason:</strong> ${loan.loanReason || 'No reason provided'}</p>
+                            <p class="text-xs text-gray-400 mt-2">Submitted: ${submittedDate}</p>
+                        </div>
+
+                        <div class="flex flex-col gap-2 mt-3 md:mt-0 md:text-right">
+                            <span class="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${loan.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}">
+                                ${loan.status ? loan.status.charAt(0).toUpperCase() + loan.status.slice(1) : 'Pending'}
+                            </span>
+                            <button onclick="approveLoanRequest('${loan._id}')" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition">
+                                <i class="fas fa-check mr-1"></i> Approve
+                            </button>
+                            <button onclick="rejectLoanRequest('${loan._id}')" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition">
+                                <i class="fas fa-times mr-1"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading pending loan requests:', error);
+        const container = document.getElementById('pendingLoansContainer');
+        if (container) {
+            container.innerHTML = '<div class="text-center text-red-500 py-8"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>Failed to load pending loan requests</p></div>';
+        }
+    }
+}
+
+async function approveLoanRequest(loanId) {
+    if (!loanId || !confirm('Approve this loan request?')) return;
+
+    try {
+        const approvedAmountPrompt = prompt('Enter approved loan amount or leave blank to keep requested amount:');
+        let approvedLoanAmount = null;
+
+        if (approvedAmountPrompt !== null && approvedAmountPrompt.trim() !== '') {
+            approvedLoanAmount = parseFloat(approvedAmountPrompt.replace(/,/g, ''));
+            if (Number.isNaN(approvedLoanAmount) || approvedLoanAmount <= 0) {
+                alert('Please enter a valid number for the approved amount.');
+                return;
+            }
+        }
+
+        const response = await fetch(`/api/admin/pending-loans/approve/${loanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: getCurrentAdminId(), approvedLoanAmount })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert('Loan request approved successfully.');
+            loadPendingLoans();
+        } else {
+            alert('Error approving loan: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error approving loan request:', error);
+        alert('Failed to approve loan request.');
+    }
+}
+
+async function rejectLoanRequest(loanId) {
+    if (!loanId) return;
+    const rejectionReason = prompt('Enter a reason for rejecting this loan request:');
+    if (rejectionReason === null) return;
+
+    try {
+        const response = await fetch(`/api/admin/pending-loans/reject/${loanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: getCurrentAdminId(), rejectionReason })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert('Loan request rejected successfully.');
+            loadPendingLoans();
+        } else {
+            alert('Error rejecting loan: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error rejecting loan request:', error);
+        alert('Failed to reject loan request.');
     }
 }
 
@@ -2547,9 +2829,12 @@ async function submitLeaveDecision(requestId, action) {
 // Attach to window for global access
 window.loadPendingApprovals = loadPendingApprovals;
 window.loadPendingSwapRequests = loadPendingSwapRequests;
+window.loadPendingLoans = loadPendingLoans;
 window.loadPendingLeaveRequests = loadPendingLeaveRequests;
 window.loadPendingTimeCorrections = loadPendingTimeCorrections;
 window.loadRecentApprovals = loadRecentApprovals;
+window.approveLoanRequest = approveLoanRequest;
+window.rejectLoanRequest = rejectLoanRequest;
 window.approveChange = approveChange;
 window.rejectChange = rejectChange;
 window.showChangeDetailsModal = showChangeDetailsModal;
@@ -2784,6 +3069,10 @@ let isMouseDown = false;
                  loadEmployeeDragBox();
                  loadEmployeesOnLeave();
 
+                document.addEventListener('dragend', () => {
+                    draggedEmployee = null;
+                });
+
                 // Load employees on leave
                 async function loadEmployeesOnLeave() {
     const container = document.getElementById('employeeOnLeaveContainer');
@@ -2863,10 +3152,20 @@ let isMouseDown = false;
             
                 // Refresh every 5 minutes
                 setInterval(loadEmployeesOnLeave, 5 * 60 * 1000);
+                
+                // Refresh employee drag box with shift counts every 2 minutes for real-time updates
+                setInterval(loadEmployeeDragBox, 2 * 60 * 1000);
                  
 async function renderCalendar(month, year) {
     const grid = document.getElementById('calendarGrid');
     grid.innerHTML = '';
+
+    // Update calendar header with current month/year
+    const monthYearEl = document.getElementById('calendarMonthYear');
+    if (monthYearEl) {
+        const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        monthYearEl.textContent = monthName;
+    }
 
     try {
         // Fetch shifts and employees in parallel
@@ -2959,6 +3258,9 @@ async function renderCalendar(month, year) {
                 const data = await res.json();
                 if (data.success) {
                     renderCalendar(month, year);
+                    if (typeof loadEmployeeDragBox === 'function') {
+                        loadEmployeeDragBox();
+                    }
                 } else {
                     alert('❌ Failed to delete shift: ' + (data.message || 'Unknown error'));
                 }
@@ -3229,6 +3531,7 @@ async function dropShift(e) {
             }
 
             loadShifts();
+            if (typeof loadEmployeeDragBox === 'function') { loadEmployeeDragBox(); }
             return;
         }
 
@@ -3257,6 +3560,7 @@ async function dropShift(e) {
         });
 
         loadShifts();
+        if (typeof loadEmployeeDragBox === 'function') { loadEmployeeDragBox(); }
 
     } catch (err) {
         console.error(err);
@@ -3323,6 +3627,9 @@ function setView(view) {
             }
             if (typeof loadShifts === 'function') {
                 loadShifts();
+            }
+            if (typeof loadEmployeeDragBox === 'function') {
+                loadEmployeeDragBox();
             }
         } else {
             // Show the actual error from the server (e.g. "Duplicate entry")
@@ -3514,6 +3821,7 @@ function setView(view) {
         alert('✅ Bulk shifts assigned successfully!');
         closeBulkAssignModal();
         loadShifts();
+        if (typeof loadEmployeeDragBox === 'function') { loadEmployeeDragBox(); }
 
     } catch (err) {
         console.error(err);
@@ -3530,32 +3838,56 @@ function setView(view) {
 
                 async function loadEmployeeDragBox() {
     try {
-        const res = await fetch('/api/employees/list');
-        const data = await res.json();
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const year = today.getFullYear();
+
+        const [empRes, shiftRes] = await Promise.all([
+            fetch('/api/employees/list'),
+            fetch(`/api/shifts?month=${month}&year=${year}`)
+        ]);
+
+        const empData = await empRes.json();
+        const shiftData = await shiftRes.json();
+
+        const shifts = shiftData.shifts || [];
+        const shiftsByEmployee = shifts.reduce((acc, shift) => {
+            if (!acc[shift.employeeId]) acc[shift.employeeId] = [];
+            acc[shift.employeeId].push(shift);
+            return acc;
+        }, {});
 
         const container = document.getElementById('employeeDragBox');
         container.innerHTML = '';
 
-        data.employees.forEach(emp => {
+        empData.employees.forEach(emp => {
+            const empShifts = shiftsByEmployee[emp.employeeId] || [];
+            const shiftCount = empShifts.length;
+
             const div = document.createElement('div');
+            div.className = 'min-w-[180px] bg-blue-100 text-blue-700 px-3 py-3 rounded-lg cursor-move text-sm font-medium relative hover:bg-blue-200 transition';
+            div.dataset.employeeId = emp.employeeId;
 
-            div.className = 'min-w-[150px] bg-blue-100 text-blue-700 px-3 py-2 rounded-lg cursor-move text-sm font-medium';
+            div.innerHTML = `
+                <div class="flex items-center justify-between gap-2">
+                    <div class="font-semibold">${emp.fullName}</div>
+                    <span class="text-[11px] bg-blue-200 text-blue-800 px-2 py-1 rounded-full">${shiftCount} shift${shiftCount === 1 ? '' : 's'}</span>
+                </div>
+                <div class="text-xs text-blue-800 mt-1">${emp.position || 'No role'}</div>
+            `;
 
-            // ✅ Show both fullName and position
-            div.textContent = `${emp.fullName} (${emp.position})`;
+            // Open shift details modal when clicked
+            div.addEventListener('click', async (e) => {
+                if (e.target.closest('button')) return;
+                openEmployeeShiftDetailsModal(emp, empShifts, month, year);
+            });
 
             // DRAG SETTINGS
             div.draggable = true;
-            div.dataset.employeeId = emp.employeeId;
-
             div.addEventListener('dragstart', (e) => {
                 draggedEmployee = emp.employeeId; // set global for range create
                 e.dataTransfer.setData('employeeId', emp.employeeId);
                 e.dataTransfer.setData('type', 'new'); // mark as NEW assignment
-            });
-
-            document.addEventListener('dragend', () => {
-                draggedEmployee = null;
             });
 
             container.appendChild(div);
@@ -3565,6 +3897,46 @@ function setView(view) {
         console.error('Failed to load drag employees:', err);
     }
 }
+
+window.openEmployeeShiftDetailsModal = function(employee, shifts, month, year) {
+    const modal = document.getElementById('employeeShiftDetailsModal');
+    const title = document.getElementById('employeeShiftDetailsTitle');
+    const subtitle = document.getElementById('employeeShiftDetailsSubtitle');
+    const countEl = document.getElementById('employeeShiftCount');
+    const listEl = document.getElementById('employeeShiftList');
+    const rangeEl = document.getElementById('employeeShiftDateRange');
+
+    if (!modal || !title || !countEl || !listEl || !rangeEl || !subtitle) return;
+
+    title.textContent = `${employee.fullName}'s Shifts`;
+    subtitle.textContent = `${employee.position || 'Employee'} - ${month}/${year}`;
+    countEl.textContent = `${shifts.length}`;
+    rangeEl.textContent = shifts.length > 0 ? `${new Date(shifts[0].date).toLocaleDateString()} - ${new Date(shifts[shifts.length - 1].date).toLocaleDateString()}` : 'No assigned shifts';
+
+    listEl.innerHTML = shifts.length > 0 ? shifts.map(shift => {
+        const date = new Date(shift.date);
+        return `
+            <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="font-semibold text-gray-900">${shift.shift || 'No shift label'}</div>
+                    <div class="text-xs text-gray-500">${date.toLocaleDateString()}</div>
+                </div>
+                <div class="text-xs text-gray-600 mt-2">
+                    ${shift.department ? `<span class="font-medium">Dept:</span> ${shift.department}` : ''}
+                    ${shift.notes ? `<span class="ml-3 font-medium">Notes:</span> ${shift.notes}` : ''}
+                </div>
+            </div>
+        `;
+    }).join('') : '<div class="text-sm text-gray-600">This employee has no shifts for the selected month.</div>';
+
+    modal.classList.remove('hidden');
+};
+
+window.closeEmployeeShiftDetailsModal = function() {
+    const modal = document.getElementById('employeeShiftDetailsModal');
+    if (modal) modal.classList.add('hidden');
+};
+
 function highlightRange() {
     const cells = document.querySelectorAll('#calendarGrid > div');
 
@@ -3619,6 +3991,7 @@ async function createRangeShift(employeeId, start, end) {
     try {
         await Promise.all(requests);
         loadShifts();
+        if (typeof loadEmployeeDragBox === 'function') { loadEmployeeDragBox(); }
     } catch (err) {
         console.error(err);
         alert('❌ Error assigning range');
@@ -3700,6 +4073,7 @@ async function fetchAndRenderPayroll() {
         console.error("Error fetching live payroll:", err);
     }
 }
+
 let payrollStats = [];
 
 
@@ -3736,7 +4110,7 @@ function renderTablePage() {
     const endIndex = startIndex + rowsPerPage;
     const paginatedEmployees = activeList.slice(startIndex, endIndex);
 
-    let totals = { basic: 0, allowances: 0, tax: 0, sss: 0, philhealth: 0, pagibig: 0, deductions: 0, gross: 0, net: 0 };
+    let totals = { basic: 0, allowances: 0, tax: 0, sss: 0, philhealth: 0, pagibig: 0, loan: 0, deductions: 0, gross: 0, net: 0 };
 
     // --- RENDER INDIVIDUAL ROWS ---
     paginatedEmployees.forEach(emp => {
@@ -3757,17 +4131,6 @@ function renderTablePage() {
         const totalDeduct = Number(emp.totalDeductions || 0);
         const grossPay = totalBasic + totalAllow;
         const netPay = grossPay - totalDeduct;
-
-        // Update Totals for the footer
-        totals.basic += totalBasic;
-        totals.allowances += totalAllow;
-        totals.tax += Number(emp.tax || 0);
-        totals.sss += Number(emp.sss || 0);
-        totals.philhealth += Number(emp.philhealth || 0);
-        totals.pagibig += Number(emp.pagibig || 0);
-        totals.deductions += totalDeduct;
-        totals.gross += grossPay;
-        totals.net += netPay;
 
         const initials = emp.fullName ? emp.fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '??';
         let imgSrc = emp.profilePic;
@@ -3810,6 +4173,22 @@ function renderTablePage() {
                 </td>
             </tr>`);
 
+        const loanPayment = Number(emp.loanMonthlyPayment || 0);
+        const totalDeductWithLoan = totalDeduct + loanPayment;
+        const netPayWithLoan = grossPay - totalDeductWithLoan;
+
+        // Update Totals for the footer
+        totals.basic += totalBasic;
+        totals.allowances += totalAllow;
+        totals.tax += Number(emp.tax || 0);
+        totals.sss += Number(emp.sss || 0);
+        totals.philhealth += Number(emp.philhealth || 0);
+        totals.pagibig += Number(emp.pagibig || 0);
+        totals.loan += loanPayment;
+        totals.deductions += totalDeductWithLoan;
+        totals.gross += grossPay;
+        totals.net += netPayWithLoan;
+
         // Deductions Tab Row
         deductionsBody.insertAdjacentHTML('beforeend', `
             <tr class="border-b border-gray-200 hover:bg-gray-50">
@@ -3818,6 +4197,7 @@ function renderTablePage() {
                 <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.philhealth || 0).toLocaleString()}</td>
                 <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.sss || 0).toLocaleString()}</td>
                 <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.pagibig || 0).toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${loanPayment.toLocaleString()}</td>
                 <td class="px-4 py-4 text-sm font-bold text-red-500">₱${totalDeduct.toLocaleString()}</td>
                 <td class="px-4 py-4">
                     <button onclick="openEditDeductionsModal('${emp.fullName}', '${emp.employeeId}', ${emp.tax || 0}, ${emp.philhealth || 0}, ${emp.sss || 0}, ${emp.pagibig || 0})" class="text-[#003D7A] hover:text-[#0052A3]"><i class="fas fa-edit"></i></button>
@@ -3834,9 +4214,10 @@ function renderTablePage() {
                 <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.sss || 0).toLocaleString()}</td>
                 <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.philhealth || 0).toLocaleString()}</td>
                 <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.pagibig || 0).toLocaleString()}</td>
-                <td class="px-4 py-3 text-right font-bold text-red-600">-₱${totalDeduct.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-red-600">-₱${loanPayment.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-red-600">-₱${totalDeductWithLoan.toLocaleString()}</td>
                 <td class="px-4 py-3 text-right font-semibold">₱${grossPay.toLocaleString()}</td>
-                <td class="px-4 py-3 text-right font-bold text-gray-900">₱${netPay.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right font-bold text-gray-900">₱${netPayWithLoan.toLocaleString()}</td>
             </tr>`);
     });
 
@@ -3850,6 +4231,7 @@ function renderTablePage() {
             <td class="px-4 py-3 text-right">-₱${totals.sss.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">-₱${totals.philhealth.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">-₱${totals.pagibig.toLocaleString()}</td>
+            <td class="px-4 py-3 text-right">-₱${totals.loan.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">-₱${totals.deductions.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">₱${totals.gross.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">₱${totals.net.toLocaleString()}</td>
@@ -3877,14 +4259,23 @@ function renderTablePage() {
 
 window.loadPayrollData = async function () {
     try {
-        const start = document.getElementById('startDate').value;
-        const end = document.getElementById('endDate').value;
+        const startElement = document.getElementById('startDate');
+        const endElement = document.getElementById('endDate');
 
-        if (!start || !end) {
-            console.warn("Missing start or end date — request still sent");
+        if (!startElement || !endElement) {
+            console.error("Payroll date inputs not found.");
+            return;
         }
 
-        const url = `/api/payroll/calculate-all?startDate=${start}&endDate=${end}`;
+        const start = startElement.value;
+        const end = endElement.value;
+
+        if (!start || !end) {
+            console.warn("Missing start or end date — request canceled.");
+            return;
+        }
+
+        const url = `/api/payroll/calculate-all?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`;
         console.log("Fetching payroll for:", url);
 
         const response = await fetch(url);
@@ -3904,46 +4295,7 @@ window.loadPayrollData = async function () {
     }
 };
 
-async function syncDatesFromPeriod() {
-    const monthInput = document.getElementById('payroll-month').value;
-    const period = document.getElementById('payroll-period').value;
-
-    if (!monthInput || !period) return;
-
-    const [year, month] = monthInput.split('-');
-
-    let start, end;
-
-    if (period === "15th") {
-        start = `${year}-${month}-01`;
-        end = `${year}-${month}-15`;
-    } else if (period === "30th") {
-        start = `${year}-${month}-16`;
-        const lastDay = new Date(year, parseInt(month), 0).getDate();
-        end = `${year}-${month}-${lastDay}`;
-    }
-
-    document.getElementById('startDate').value = start;
-    document.getElementById('endDate').value = end;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const monthEl = document.getElementById('payroll-month');
-    const periodEl = document.getElementById('payroll-period');
-
-    if (monthEl && periodEl) {
-        monthEl.addEventListener('change', syncDatesFromPeriod);
-        periodEl.addEventListener('change', syncDatesFromPeriod);
-    }
-
-    document.getElementById('startDate').addEventListener('change', () => {
-        document.getElementById('payroll-period').value = "";
-    });
-
-    document.getElementById('endDate').addEventListener('change', () => {
-        document.getElementById('payroll-period').value = "";
-    });
-});
+// Payroll quick-select logic is initialized by initializePageScripts() when the payroll page loads.
 
 // --- 3. PAGINATION UI CONTROLS ---
 window.updatePaginationUI = function(totalCount) {
@@ -3986,8 +4338,14 @@ function getBadgeStyle(type) {
 }
 
 fetchAndRenderPayroll();
-loadPayrollData();
 
+const initialStart = document.getElementById('startDate')?.value;
+const initialEnd = document.getElementById('endDate')?.value;
+if (initialStart && initialEnd) {
+    loadPayrollData();
+} else {
+    console.info('Payroll load skipped until both start and end dates are set.');
+}
 
 // 1. Open Modal and Populate Data
 window.openEditAllowancesModal = function(name, id, position, housing, travel, meal, hazard) {
@@ -4047,7 +4405,7 @@ window.saveAllowances = async function() {
     "Allowances Updated",
     `Allowances for ${name} were updated.`,
     "ALLOWANCE",
-    "/admin/payroll.html#allowances"
+    "/admin/pages/payroll.html#allowances"
 );
         } else {
             alert('Error updating allowances: ' + data.message);
@@ -4136,7 +4494,7 @@ window.saveDeductions = async function() {
     "Deductions Updated",
     `Deductions for Employee ID ${payload.employeeId} were updated.`,
     "DEDUCTION",
-    "/admin/payroll.html#deductions"
+    "/admin/pages/payroll.html#deductions"
 );
         } else {
             alert("Failed to save deductions: " + data.message);
@@ -4223,7 +4581,7 @@ await triggerNotification(
     'Payroll Finalized',
     `Monthly payroll for ${payrollMonth} (${payrollPeriod}) has been saved to the database.`,
     'PAYROLL',
-    `/admin/payroll.html#${payrollMonth}-${payrollPeriod}` // link to that payroll period
+    `/admin/pages/payroll.html#${payrollMonth}-${payrollPeriod}` // link to that payroll period
 );
             // ----------------------
             
@@ -4390,7 +4748,7 @@ window.generatePayslips = async function() {
     setTimeout(async () => {
         // Updated condition to include 'email'
         if (format === 'individual' || format === 'combined' || format === 'email') {
-            await createActualPDF(format, dateRangeLabel, statsToProcess); 
+            await createActualPDF(format, dateRangeLabel, monthInput, periodInput, statsToProcess);
         } else if (format === 'excel') {
             downloadExcel(dateRangeLabel, statsToProcess);
         }
@@ -4402,7 +4760,80 @@ window.generatePayslips = async function() {
 
 window.closePayslipModal = () => document.getElementById('payslipModal').classList.add('hidden');
 
-async function createActualPDF(format, dateRangeLabel, statsToProcess) {
+function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, totalDeduct, totalNet) {
+    const [year, month] = monthValue.split('-');
+    const monthIndex = Number(month) - 1;
+    const monthName = new Date(year, monthIndex).toLocaleString('default', { month: 'long' });
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const rows = [];
+
+    if (periodValue === '1-15') {
+        const weekRanges = [
+            { label: `${monthName} 1 - 7`, factor: 7 },
+            { label: `${monthName} 8 - 14`, factor: 7 },
+            { label: `${monthName} 15`, factor: 1 }
+        ];
+        const totalFactor = 15;
+        let remainingHours = totalHours;
+        let remainingGross = totalGross;
+        let remainingDeduct = totalDeduct;
+        let remainingNet = totalNet;
+
+        weekRanges.forEach((week, index) => {
+            const isLast = index === weekRanges.length - 1;
+            const share = week.factor / totalFactor;
+            const hours = isLast ? remainingHours : Math.round(totalHours * share);
+            const gross = isLast ? remainingGross : Math.round(totalGross * share);
+            const deduct = isLast ? remainingDeduct : Math.round(totalDeduct * share);
+            const net = isLast ? remainingNet : Math.round(totalNet * share);
+
+            if (!isLast) {
+                remainingHours -= hours;
+                remainingGross -= gross;
+                remainingDeduct -= deduct;
+                remainingNet -= net;
+            }
+
+            rows.push([week.label, `${hours} hours`, `PHP ${gross.toLocaleString()}`, `PHP ${deduct.toLocaleString()}`, `PHP ${net.toLocaleString()}`]);
+        });
+    } else {
+        const weekRanges = [
+            { label: `${monthName} 16 - 22`, factor: 7 }
+        ];
+
+        if (daysInMonth > 22) {
+            weekRanges.push({ label: `${monthName} 23 - ${daysInMonth}`, factor: daysInMonth - 22 });
+        }
+
+        const totalFactor = weekRanges.reduce((sum, item) => sum + item.factor, 0);
+        let remainingHours = totalHours;
+        let remainingGross = totalGross;
+        let remainingDeduct = totalDeduct;
+        let remainingNet = totalNet;
+
+        weekRanges.forEach((week, index) => {
+            const isLast = index === weekRanges.length - 1;
+            const share = week.factor / totalFactor;
+            const hours = isLast ? remainingHours : Math.round(totalHours * share);
+            const gross = isLast ? remainingGross : Math.round(totalGross * share);
+            const deduct = isLast ? remainingDeduct : Math.round(totalDeduct * share);
+            const net = isLast ? remainingNet : Math.round(totalNet * share);
+
+            if (!isLast) {
+                remainingHours -= hours;
+                remainingGross -= gross;
+                remainingDeduct -= deduct;
+                remainingNet -= net;
+            }
+
+            rows.push([week.label, `${hours} hours`, `PHP ${gross.toLocaleString()}`, `PHP ${deduct.toLocaleString()}`, `PHP ${net.toLocaleString()}`]);
+        });
+    }
+
+    return rows;
+}
+
+async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, statsToProcess) {
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
     
@@ -4422,47 +4853,199 @@ async function createActualPDF(format, dateRangeLabel, statsToProcess) {
         const totalBasic = Number(emp.baseSalary || 0) * stat.payableDays;
         const totalAllow = Number(emp.totalAllowances || 0);
         const totalDeduct = Number(emp.totalDeductions || 0);
-        const netPay = (totalBasic + totalAllow) - totalDeduct;
+        const totalGross = totalBasic + totalAllow;
+        const netPay = totalGross - totalDeduct;
+        const [year, month] = monthValue.split('-');
+        const monthName = new Date(year, Number(month) - 1).toLocaleString('default', { month: 'long' });
+        const payPeriodText = periodValue === '1-15' ? '1st - 15th' : '16th - End of Month';
+        const compensationType = emp.contractType || 'Regular';
+        const salaryOrRate = `PHP ${Number(emp.baseSalary || 0).toLocaleString()}`;
 
-        // --- PDF Content ---
-        doc.setFontSize(16);
-        doc.setTextColor(0, 61, 122);
-        doc.text("ZEAL COMMUNITY MEDICAL MISSION FOUNDATION", 105, 15, { align: "center" });
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Official Payslip: ${dateRangeLabel}`, 105, 22, { align: "center" });
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+        const preparedBy = loggedInUser.fullName || loggedInUser.name || 'Admin User';
+        const totalHours = stat.totalWorkHours || 0;
+        const payableDate = periodValue === '1-15'
+            ? `${monthName} 15, ${year}`
+            : `${monthName} ${new Date(year, Number(month), 0).getDate()}, ${year}`;
 
-        // Employee Info Table
-        doc.autoTable({
-            startY: 30,
-            body: [
-                ["Employee Name:", emp.fullName, "Employee ID:", emp.employeeId],
-                ["Position:", emp.position || "N/A", "Payable Days:", `${stat.payableDays} Days`],
-                ["Work Hours:", `${stat.totalWorkHours} hrs`, "Lates:", stat.totalLates]
-            ],
-            theme: 'plain',
-            styles: { fontSize: 9, cellPadding: 2 }
-        });
+        let attendanceRecords = [];
+        try {
+            const attendanceRes = await fetch(`/api/attendance/employee/${emp.employeeId}?month=${monthValue}&period=${periodValue}`);
+            const attendanceData = await attendanceRes.json();
+            attendanceRecords = attendanceData.attendance || [];
+        } catch (error) {
+            console.warn('Could not fetch attendance data:', error);
+        }
 
-        // Financials Table
-        doc.autoTable({
-            startY: doc.lastAutoTable.finalY + 10,
-            head: [['Earnings', 'Amount', 'Deductions', 'Amount']],
-            body: [
-                ['Base Salary', `P${totalBasic.toLocaleString()}`, 'Tax', `P${Number(emp.tax || 0).toLocaleString()}`],
-                ['Allowances', `P${totalAllow.toLocaleString()}`, 'SSS', `P${Number(emp.sss || 0).toLocaleString()}`],
-                ['', '', 'PhilHealth', `P${Number(emp.philhealth || 0).toLocaleString()}`],
-                ['', '', 'Pag-IBIG', `P${Number(emp.pagibig || 0).toLocaleString()}`],
-            ],
-            foot: [['Total Gross', `P${(totalBasic + totalAllow).toLocaleString()}`, 'Total Deduct', `P${totalDeduct.toLocaleString()}`]],
-            headStyles: { fillColor: [0, 61, 122] },
-            footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] }
-        });
+        async function getImageDataUrl(imagePath) {
+            try {
+                const response = await fetch(imagePath);
+                const blob = await response.blob();
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                return null;
+            }
+        }
+
+        const logoDataUrl = await getImageDataUrl('./images/logo.jpg');
+        if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'JPEG', 92, 10, 26, 26);
+        }
 
         doc.setFontSize(12);
         doc.setTextColor(0);
-        doc.text(`NET PAY: P${netPay.toLocaleString()}`, 190, doc.lastAutoTable.finalY + 15, { align: "right" });
+        doc.setFont('helvetica', 'bold');
+        doc.text('Zeal Community Medical Mission', 105, 42, { align: 'center' });
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Zeal Community Medical Mission Foundation, Payatas A, 221 Upper Jasmin St, Quezon City, Metro Manila', 105, 48, { align: 'center', maxWidth: 170 });
+
+        doc.setDrawColor(0, 61, 122);
+        doc.setLineWidth(0.5);
+        doc.line(30, 52, 180, 52);
+
+        doc.setFontSize(16);
+        doc.setTextColor(0, 61, 122);
+        doc.setFont('helvetica', 'bold');
+        doc.text('MONTHLY EMPLOYEE PAYROLL REPORT', 105, 64, { align: 'center' });
+
+        const detailStartY = 70;
+        const boxHeight = 36;
+        const leftBoxX = 20;
+        const rightBoxX = 105;
+        const boxWidth = 85;
+        const labelWidth = 38;
+
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.3);
+        doc.rect(leftBoxX, detailStartY, boxWidth, boxHeight);
+        doc.rect(rightBoxX, detailStartY, boxWidth, boxHeight);
+
+        doc.setFillColor(230, 230, 235);
+        doc.rect(leftBoxX, detailStartY, labelWidth, boxHeight, 'F');
+        doc.rect(rightBoxX, detailStartY, labelWidth, boxHeight, 'F');
+
+        doc.setFontSize(8);
+        doc.setTextColor(0);
+        doc.text('Name of Employee :', leftBoxX + 4, detailStartY + 11);
+        doc.text('Pay Period :', leftBoxX + 4, detailStartY + 24);
+        doc.text('Compensation Type :', rightBoxX + 4, detailStartY + 11);
+        doc.text('Salary or Rate :', rightBoxX + 4, detailStartY + 24);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(emp.fullName || 'N/A', leftBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
+        doc.text(`${monthName} ${year} (${payPeriodText})`, leftBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+        doc.text(compensationType, rightBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
+        doc.text(salaryOrRate, rightBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+
+        doc.setFontSize(8);
+        doc.text(`Payable Date : ${payableDate}`, 20, detailStartY + boxHeight + 18);
+        doc.text(`Total Hours : ${totalHours} hours`, 20, detailStartY + boxHeight + 24);
+        doc.text(`Allowances : PHP ${totalAllow.toLocaleString()}`, 110, detailStartY + boxHeight + 18);
+        doc.text(`Deductions : PHP ${totalDeduct.toLocaleString()}`, 110, detailStartY + boxHeight + 24);
+
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text(`Payroll Breakdown ( ${monthName} ${year} )`, 20, detailStartY + boxHeight + 34);
+
+        const breakdownRows = buildPayslipWeekRows(monthValue, periodValue, stat.totalWorkHours || 0, totalGross, totalDeduct, netPay);
+
+        doc.autoTable({
+            startY: detailStartY + boxHeight + 44,
+            head: [['Week of :', 'Hours Worked :', 'Gross Pay :', 'Deductions ( taxes, etc )', 'Net Pay :']],
+            body: breakdownRows,
+            foot: [[
+                'TOTAL',
+                `${stat.totalWorkHours || 0} hours`,
+                `PHP ${totalGross.toLocaleString()}`,
+                `PHP ${totalDeduct.toLocaleString()}`,
+                `PHP ${netPay.toLocaleString()}`
+            ]],
+            headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+            footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+            styles: { fontSize: 8, cellPadding: 3 }
+        });
+
+        const attendanceStartY = doc.lastAutoTable.finalY + 12;
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text('Attendance Summary', 20, attendanceStartY);
+
+        const attendanceRows = attendanceRecords.map(att => [
+            att.date,
+            att.checkIn || 'N/A',
+            att.checkOut || 'N/A',
+            att.duration || 'N/A',
+            att.status || 'N/A'
+        ]);
+
+        if (attendanceRows.length > 0) {
+            doc.autoTable({
+                startY: attendanceStartY + 5,
+                head: [['Date', 'Check In', 'Check Out', 'Duration', 'Status']],
+                body: attendanceRows,
+                headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+                styles: { fontSize: 7, cellPadding: 2 }
+            });
+        } else {
+            doc.setFontSize(8);
+            doc.text('No attendance records found for this period.', 20, attendanceStartY + 10);
+        }
+
+        const summaryTableStartY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : attendanceStartY + 18;
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text('Payroll Summary', 20, summaryTableStartY);
+
+        doc.autoTable({
+            startY: summaryTableStartY + 6,
+            theme: 'plain',
+            body: [
+                ['Basic Salary', `PHP ${totalBasic.toLocaleString()}`],
+                ['Allowances', `PHP ${totalAllow.toLocaleString()}`],
+                ['Deductions', `PHP ${totalDeduct.toLocaleString()}`],
+                ['Net Pay', `PHP ${netPay.toLocaleString()}`]
+            ],
+            styles: { fontSize: 8, cellPadding: 3 },
+            columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 60 } }
+        });
+
+        const notesStartY = doc.lastAutoTable.finalY + 12;
+        doc.setFontSize(9);
+        doc.setTextColor(0);
+        doc.text('Notes :', 20, notesStartY);
+        doc.setFontSize(8);
+        const notes = [
+            '• Gross Pay: Total before any deductions.',
+            '• Deductions: Includes estimated taxes (Social Security, PhilHealth, Income Taxes, etc).',
+            '• Net Pay: Final amount after deduction.'
+        ];
+        notes.forEach((line, index) => {
+            doc.text(line, 24, notesStartY + 5 + (index * 4));
+        });
+
+        const signatureY = notesStartY + 26;
+        doc.setLineWidth(0.3);
+        doc.line(30, signatureY, 90, signatureY);
+        doc.line(120, signatureY, 180, signatureY);
+
+        doc.setFontSize(9);
+        doc.text('Prepared By :', 30, signatureY - 4);
+        doc.text('Approved By :', 120, signatureY - 4);
+        doc.setFontSize(8);
+        doc.text(preparedBy, 30, signatureY + 6);
+        doc.text('Manager', 120, signatureY + 6);
+        doc.text('HR Payroll Department', 30, signatureY + 11);
+        doc.text('Manager', 120, signatureY + 11);
+
+        doc.setFontSize(7);
+        doc.text('For any question or concern, contact HR and the payroll team at hrzealcommunity@gmail.com', 20, signatureY + 22, { maxWidth: 170 });
 
         // --- Output Handling ---
         
@@ -4707,6 +5290,7 @@ async function fetchEmployees() {
 
         // 4. Fetch KPI Data
         loadEmployeeKPI(emp.employeeId);
+        loadEmployeeMemos(emp.employeeId);
     };
 
     async function loadEmployeeKPI(employeeId) {
@@ -4911,10 +5495,105 @@ window.addEventListener('DOMContentLoaded', () => {
 
     fetchEmployees();
 
-                window.loadEmployeePerformance = function(employeeId) {
-                    // Placeholder - would load employee-specific data
-                    console.log('Loading performance for:', employeeId);
-                };
+    window.loadEmployeePerformance = function(employeeId) {
+        console.log('Loading performance for:', employeeId);
+        loadEmployeeKPI(employeeId);
+        loadEmployeeMemos(employeeId);
+    };
+
+    async function loadEmployeeMemos(employeeId) {
+        if (!employeeId) return;
+
+        try {
+            const response = await fetch(`/api/performance/memos/${employeeId}`);
+            if (!response.ok) throw new Error('Failed to load employee memos');
+            const data = await response.json();
+            updateMemoList(data.memos || []);
+        } catch (err) {
+            console.error('Error loading employee memos:', err);
+            updateMemoList([]);
+        }
+    }
+
+    function updateMemoList(memos) {
+        const container = document.getElementById('memoListContainer');
+        if (!container) return;
+
+        if (!memos.length) {
+            container.innerHTML = '<p class="text-sm text-gray-500">No memos uploaded yet for this employee.</p>';
+            return;
+        }
+
+        container.innerHTML = memos.slice(0, 5).map(memo => {
+            const createdAt = new Date(memo.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            const fileName = memo.originalName || memo.fileName || 'Performance Memo';
+            return `
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="font-semibold text-gray-900">${memo.subject || 'Performance Memo'}</p>
+                            <p class="text-xs text-gray-500">${createdAt}</p>
+                        </div>
+                        <a href="${memo.filePath}" target="_blank" class="text-blue-700 text-sm font-medium">Download</a>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2">${memo.message || 'No memo message provided.'}</p>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.sendPerformanceMemo = async function() {
+        if (!currentPerformanceEmployee?.id) {
+            alert('Please select an employee first.');
+            return;
+        }
+
+        const fileInput = document.getElementById('performanceMemoFile');
+        const subjectInput = document.getElementById('memoSubject');
+        const messageInput = document.getElementById('memoNote');
+
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+            alert('Please attach a memo file before sending.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('employeeId', currentPerformanceEmployee.id);
+        formData.append('subject', subjectInput?.value || 'Performance Memo');
+        formData.append('message', messageInput?.value || 'A new performance memo has been uploaded.');
+        formData.append('memoFile', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/api/performance/memo', {
+                method: 'POST',
+                body: formData
+            });
+
+            const responseText = await response.text();
+
+            if (!response.ok) {
+                let errorMessage = `Status ${response.status}`;
+                try {
+                    const errorData = JSON.parse(responseText);
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (parseError) {
+                    errorMessage = responseText || errorMessage;
+                }
+                console.error('Performance memo error response:', response.status, responseText);
+                throw new Error(errorMessage);
+            }
+
+            const result = responseText ? JSON.parse(responseText) : {};
+            alert('Memo uploaded and employee notified successfully.');
+            if (subjectInput) subjectInput.value = '';
+            if (messageInput) messageInput.value = '';
+            if (fileInput) fileInput.value = '';
+            loadEmployeeMemos(currentPerformanceEmployee.id);
+        } catch (err) {
+            console.error('Error sending performance memo:', err);
+            alert(`Failed to send memo: ${err.message || 'Please try again.'}`);
+        }
+    };
 
                 window.showPerformanceSection = function(sectionName) {
                     // Hide all sections
@@ -5406,7 +6085,7 @@ window.handleCheckIn = async function(isQR = false) {
         'Attendance Logged',
         `${employee.fullName} recorded a ${actionType} at ${timeString}.`,
         'ATTENDANCE',
-        `/admin/attendance.html#employee-${employee._id}`
+        `/admin/pages/attendance.html#employee-${employee._id}`
     );
 
     idInput.value = '';
@@ -5572,7 +6251,7 @@ window.saveAttendanceByDate = async function() {
                 'Attendance Saved',
                 `Attendance for ${selectedDate} has been archived.`,
                 'ATTENDANCE',
-                `/admin/attendance.html#${selectedDate}`
+                `/admin/pages/attendance.html#${selectedDate}`
             );
 
         } else {

@@ -124,6 +124,7 @@
         const getStatusClasses = (status) => {
             if (status === 'On-Time' || status === 'Completed') return 'bg-green-100 text-green-700';
             if (status === 'Late') return 'bg-orange-100 text-orange-700';
+            if (status === 'No Shift') return 'bg-red-100 text-red-700';
             return 'bg-blue-100 text-blue-700';
         };
 
@@ -215,6 +216,26 @@
                 if (!employee) {
                     alert("ID Not Recognized");
                     isPaused = false;
+                    return;
+                }
+
+                // Check if employee has a shift assigned for today
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const year = today.getFullYear();
+                
+                const shiftsResponse = await fetch(`/api/shifts/employee/${empId}?month=${month}&year=${year}`);
+                const shiftsData = await shiftsResponse.json();
+                
+                const hasShiftToday = shiftsData.success && shiftsData.shifts && 
+                    shiftsData.shifts.some(shift => shift.date.split('T')[0] === todayStr);
+
+                if (!hasShiftToday && !existing) {
+                    // No shift assigned and no existing check-in - block attendance
+                    beep.play().catch(() => {});
+                    showModal(employee, "NO SHIFT", "No shift assigned for today", "bg-red-600");
+                    setTimeout(() => isPaused = false, 3500);
                     return;
                 }
 
