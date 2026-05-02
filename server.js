@@ -2156,6 +2156,135 @@ app.get('/api/employees/list', async (req, res) => {
 
 
 
+
+app.get('/api/employees/admin', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const { search, role, status } = req.query;
+
+        // Stage 1: Define the Filter Logic
+        const filterMatch = {
+            $and: [
+                role ? { role: role } : {},
+                (status && status !== 'All Status') ? { status: status } : {},
+                search ? {
+                    $or: [
+                        { fullName: { $regex: search, $options: 'i' } },
+                        { email: { $regex: search, $options: 'i' } },
+                        { employeeId: { $regex: search, $options: 'i' } }
+                    ]
+                } : {}
+            ]
+        };
+
+        const pipeline = [
+            { $lookup: { from: "doctors", localField: "employeeId", foreignField: "employeeId", as: "doc" } },
+            { $lookup: { from: "nurses", localField: "employeeId", foreignField: "employeeId", as: "nur" } },
+            { $lookup: { from: "guards", localField: "employeeId", foreignField: "employeeId", as: "gua" } },
+            { $lookup: { from: "staffs", localField: "employeeId", foreignField: "employeeId", as: "stf" } },
+            { $lookup: { from: "admins", localField: "employeeId", foreignField: "employeeId", as: "adm" } },
+            { $lookup: { from: "accountings", localField: "employeeId", foreignField: "employeeId", as: "acc" } },
+            {
+                $project: {
+                    employeeId: 1,
+                    role: 1,
+                    email: 1,
+                    profilePic: { $ifNull: ["$profilePic", "/uploads/profiles/default-avatar.png"] },
+                    status: { $ifNull: ["$status", "Active"] },
+
+                    fullName: {
+                        $let: {
+                            vars: {
+                                profile: {
+                                    $ifNull: [
+                                        { $arrayElemAt: ["$doc", 0] },
+                                        { $arrayElemAt: ["$nur", 0] },
+                                        { $arrayElemAt: ["$gua", 0] },
+                                        { $arrayElemAt: ["$stf", 0] },
+                                        { $arrayElemAt: ["$adm", 0] },
+                                        { $arrayElemAt: ["$acc", 0] }
+                                    ]
+                                }
+                            },
+                            in: {
+                                $concat: [
+                                    { $ifNull: ["$$profile.firstName", { $ifNull: ["$$profile.firstname", "Unknown"] }] },
+                                    " ",
+                                    { $ifNull: ["$$profile.lastName", { $ifNull: ["$$profile.lastname", "User"] }] }
+                                ]
+                            }
+                        }
+                    },
+
+                    position: {
+                        $ifNull: [
+                            { $arrayElemAt: ["$doc.position", 0] },
+                            { $arrayElemAt: ["$nur.position", 0] },
+                            { $arrayElemAt: ["$gua.position", 0] },
+                            { $arrayElemAt: ["$stf.position", 0] },
+                            { $arrayElemAt: ["$adm.position", 0] },
+                            { $arrayElemAt: ["$acc.position", 0] },
+                            "General Staff"
+                        ]
+                    },
+
+                    phoneNumber: {
+                        $ifNull: [
+                            { $arrayElemAt: ["$doc.phoneNumber", 0] },
+                            { $arrayElemAt: ["$nur.phoneNumber", 0] },
+                            { $arrayElemAt: ["$gua.phoneNumber", 0] },
+                            { $arrayElemAt: ["$stf.phoneNumber", 0] },
+                            { $arrayElemAt: ["$adm.phoneNumber", 0] },
+                            { $arrayElemAt: ["$acc.phoneNumber", 0] },
+                            "N/A"
+                        ]
+                    },
+
+                    hireDate: { 
+                        $ifNull: [
+                            { $arrayElemAt: ["$doc.dateJoined", 0] },
+                            { $arrayElemAt: ["$nur.dateJoined", 0] },
+                            { $arrayElemAt: ["$gua.dateJoined", 0] },
+                            { $arrayElemAt: ["$stf.dateJoined", 0] },
+                            { $arrayElemAt: ["$adm.dateJoined", 0] },
+                            { $arrayElemAt: ["$acc.dateJoined", 0] },   
+                            "N/A"
+                        ] 
+                    }
+                }
+            },
+            { $match: filterMatch }
+        ];
+
+        // Stage 2: Get Total Count after filters
+        const countPipeline = [...pipeline, { $count: "total" }];
+        const countResult = await User.aggregate(countPipeline);
+        const totalEmployees = countResult.length > 0 ? countResult[0].total : 0;
+
+        // Stage 3: Get Paginated Data
+        const employees = await User.aggregate([
+            ...pipeline,
+            { $sort: { hireDate: -1 } },
+            { $skip: skip },
+            { $limit: limit }
+        ]);
+
+        res.json({
+            employees,
+            page: page,
+            pages: Math.ceil(totalEmployees / limit),
+            total: totalEmployees
+        });
+    } catch (err) {
+        console.error("Aggregation Error:", err);
+        res.status(500).json({ success: false, message: "Error fetching employee list" });
+    }
+});
+
+
 // Define the Collection (Schema)
 const attendanceSchema = new mongoose.Schema({
     empId: { type: String, required: true }, // REMOVED 'unique: true'
@@ -2888,18 +3017,49 @@ const PayrollSchema = new mongoose.Schema({
     period: { type: String, required: true }, // "15th" or "30th"
     totalCompanyNet: { type: Number, required: true },
     records: [{
+        // --- Employee Information (Complete Table Data) ---
         employeeId: String,
         fullName: String,
         position: String,
         contractType: String,
         profilePic: String,
+        grade: String,
+        role: String,
+        status: String,
+        
+        // --- Attendance & Hours Data ---
+        totalWorkHours: Number,
+        payableDays: Number,
+        shiftDays: Number,
+        overtimeHours: Number,
+        lateMinutes: Number,
+        
+        // --- Financial Summary ---
         baseSalary: Number,
         allowances: Number,
         deductions: Number,
+        grossPay: Number,
         netPay: Number,
+        
+        // --- Detailed Payslip Breakdown ---
         breakdown: {
-            tax: Number, sss: Number, philhealth: Number, pagibig: Number,
-            housing: Number, travel: Number, meal: Number, hazardPay: Number
+            // Earnings
+            basicSalary: Number,
+            housing: Number,
+            travel: Number,
+            meal: Number,
+            hazardPay: Number,
+            overtime: Number,
+            totalEarnings: Number,
+            // Deductions
+            late: Number,
+            sss: Number,
+            philhealth: Number,
+            pagibig: Number,
+            loan: Number,
+            totalDeductions: Number,
+            // Summary
+            netPaySummary: Number
         }
     }],
     createdAt: { type: Date, default: Date.now }
@@ -5405,16 +5565,33 @@ app.get('/api/payroll/employee-history/:employeeId', async (req, res) => {
                 period: payroll.period,
                 createdAt: payroll.createdAt,
                 employeeRecord: {
+                    // Employee Information
                     fullName: record.fullName,
                     employeeId: record.employeeId,
                     position: record.position,
+                    department: record.department,
+                    contractType: record.contractType,
+                    profilePic: record.profilePic,
+                    grade: record.grade,
+                    role: record.role,
+                    status: record.status,
+                    
+                    // Attendance & Hours Data
+                    totalWorkHours: record.totalWorkHours,
+                    payableDays: record.payableDays,
+                    shiftDays: record.shiftDays,
+                    overtimeHours: record.overtimeHours,
+                    lateMinutes: record.lateMinutes,
+                    
+                    // Financial Summary
                     baseSalary: record.baseSalary,
                     allowances: record.allowances,
                     deductions: record.deductions,
+                    grossPay: record.grossPay,
                     netPay: record.netPay,
-                    breakdown: record.breakdown,
-                    contractType: record.contractType,
-                    profilePic: record.profilePic
+                    
+                    // Detailed Breakdown
+                    breakdown: record.breakdown
                 }
             };
         });

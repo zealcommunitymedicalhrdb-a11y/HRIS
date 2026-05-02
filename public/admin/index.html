@@ -1515,8 +1515,10 @@ if (document.readyState === 'loading') {
         if (typeof loadTopEmployee === 'function') loadTopEmployee();
         loadPendingApprovals();
         loadPendingSwapRequests();
+        loadPendingLoans();
         loadPendingLeaveRequests();
         loadPendingTimeCorrections();
+        loadPendingPayrollAccountingApprovals();
         loadRecentApprovals();
     });
 } else {
@@ -1731,6 +1733,8 @@ async function loadPendingLoans() {
                             </div>
 
                             <p class="text-sm text-gray-700 mt-4"><strong>Reason:</strong> ${loan.loanReason || 'No reason provided'}</p>
+                            ${loan.attachmentUrl ? `<p class="text-sm text-gray-700 mt-2"><strong>Attachment:</strong> <a href="${loan.attachmentUrl}" target="_blank" class="text-blue-600 hover:underline">View document</a></p>` : ''}
+                            ${loan.pdfPath ? `<p class="text-sm text-gray-700 mt-2"><strong>Agreement:</strong> <a href="${loan.pdfPath}" target="_blank" class="text-green-600 hover:underline">View agreement</a></p>` : ''}
                             <p class="text-xs text-gray-400 mt-2">Submitted: ${submittedDate}</p>
                         </div>
 
@@ -1760,6 +1764,212 @@ async function loadPendingLoans() {
     }
 }
 
+let currentPayrollAccountingRequestId = null;
+
+async function loadPendingPayrollAccountingApprovals() {
+    try {
+        const response = await fetch('/api/payroll/accounting-requests');
+        const data = await response.json();
+        const container = document.getElementById('pendingPayrollAccountingContainer');
+        if (!container) return;
+
+        if (!data.success || !Array.isArray(data.data) || data.data.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-8"><i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i><p>No pending payroll accounting approvals</p></div>';
+            return;
+        }
+
+        let html = '';
+        data.data.forEach(request => {
+            const submittedDate = new Date(request.createdAt || request.submittedAt || request.dateRange).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const statusLabel = request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : 'Pending';
+            const ceoStatus = request.approvedByCEO ? 'Approved' : 'Pending';
+            const accountingStatus = request.approvedByAccounting ? 'Approved' : 'Pending';
+
+            html += `
+                <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate">Payroll Approval Request for ${request.month || 'N/A'} ${request.period || ''}</p>
+                                    <p class="text-xs text-gray-500 truncate">Submitted: ${submittedDate}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
+                                <div>
+                                    <p class="font-medium text-gray-900">Month / Period</p>
+                                    <p>${request.month || 'N/A'} • ${request.period || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Date Range</p>
+                                    <p>${request.dateRange || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">CEO Status</p>
+                                    <p>${ceoStatus}</p>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Accounting Status</p>
+                                    <p>${accountingStatus}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2 mt-3 md:mt-0 md:text-right">
+                            <span class="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${request.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                ${statusLabel}
+                            </span>
+                            <button onclick="openPayrollAccountingApprovalModal('${request._id}')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                                <i class="fas fa-eye mr-1"></i> View
+                            </button>
+                            ${request.approvedByCEO && !request.approvedByAccounting ? `<button onclick="approveByAccounting('${request._id}')" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition"><i class="fas fa-check mr-1"></i> Approve Accounting</button>` : ''}
+                            ${!request.approvedByCEO ? `<button onclick="approveByCEO('${request._id}')" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition"><i class="fas fa-check mr-1"></i> Approve CEO</button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading payroll accounting approvals:', error);
+        const container = document.getElementById('pendingPayrollAccountingContainer');
+        if (container) {
+            container.innerHTML = '<div class="text-center text-red-500 py-8"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p>Failed to load payroll accounting approvals</p></div>';
+        }
+    }
+}
+
+async function openPayrollAccountingApprovalModal(requestId) {
+    try {
+        if (!requestId) return;
+        const response = await fetch(`/api/payroll/accounting-requests/${requestId}`);
+        const data = await response.json();
+
+        if (!data.success || !data.data) {
+            alert('Unable to load payroll accounting request details.');
+            return;
+        }
+
+        const request = data.data;
+        currentPayrollAccountingRequestId = requestId;
+
+        document.getElementById('approvalPayrollMonth').textContent = request.month || 'N/A';
+        document.getElementById('approvalPayrollPeriod').textContent = request.period || 'N/A';
+        document.getElementById('approvalDateRange').textContent = request.dateRange || 'N/A';
+        document.getElementById('approvalSubmittedAt').textContent = new Date(request.createdAt || request.submittedAt || Date.now()).toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const ceoStatusText = request.approvedByCEO ? 'Approved' : 'Pending';
+        const accountingStatusText = request.approvedByAccounting ? 'Approved' : 'Pending';
+        document.getElementById('ceoStatusText').textContent = ceoStatusText;
+        document.getElementById('accountingStatusText').textContent = accountingStatusText;
+        document.getElementById('ceoStatusIndicator').style.backgroundColor = request.approvedByCEO ? '#22c55e' : '#f59e0b';
+        document.getElementById('accountingStatusIndicator').style.backgroundColor = request.approvedByAccounting ? '#22c55e' : '#f59e0b';
+
+        const documentContainer = document.getElementById('documentContainer');
+        if (request.documentFile) {
+            const fileUrl = request.documentFile.replace(/\\/g, '/');
+            documentContainer.innerHTML = `<a href="${fileUrl}" target="_blank" class="text-blue-600 hover:underline">View Document</a>`;
+        } else {
+            documentContainer.innerHTML = '<p class="text-gray-600">No document attached</p>';
+        }
+
+        document.getElementById('approvalNotes').textContent = request.notes || 'No notes provided';
+
+        const payrollSummaryTable = document.getElementById('payrollSummaryTable');
+        if (payrollSummaryTable) {
+            if (!Array.isArray(request.payrollData) || request.payrollData.length === 0) {
+                payrollSummaryTable.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No payroll data available.</td></tr>';
+            } else {
+                payrollSummaryTable.innerHTML = request.payrollData.map(item => `
+                    <tr class="border-b border-gray-100">
+                        <td class="px-4 py-3 text-left text-sm text-gray-700">${item.employeeName || item.employeeId || 'Employee'}</td>
+                        <td class="px-4 py-3 text-right text-sm text-gray-700">₱${Number(item.basicSalary || item.basic || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                        <td class="px-4 py-3 text-right text-sm text-gray-700">₱${Number(item.allowances || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                        <td class="px-4 py-3 text-right text-sm text-gray-700">₱${Number(item.deductions || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                        <td class="px-4 py-3 text-right text-sm text-gray-900 font-semibold">₱${Number(item.netPay || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        const ceoBtn = document.getElementById('ceoApproveBtn');
+        const accountingBtn = document.getElementById('accountingApproveBtn');
+        if (ceoBtn) ceoBtn.classList.toggle('hidden', Boolean(request.approvedByCEO));
+        if (accountingBtn) accountingBtn.classList.toggle('hidden', !request.approvedByCEO || Boolean(request.approvedByAccounting));
+
+        document.getElementById('payrollAccountingApprovalModal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error opening payroll accounting approval modal:', error);
+        alert('Failed to open payroll approval details.');
+    }
+}
+
+function closePayrollAccountingApprovalModal() {
+    const modal = document.getElementById('payrollAccountingApprovalModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function approveByCEO(requestId = currentPayrollAccountingRequestId) {
+    if (!requestId || !confirm('Approve this payroll request as CEO?')) return;
+    try {
+        const response = await fetch(`/api/payroll/approve-by-ceo/${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: getCurrentAdminId() })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Payroll request approved by CEO.');
+            loadPendingPayrollAccountingApprovals();
+            openPayrollAccountingApprovalModal(requestId);
+        } else {
+            alert('Error approving as CEO: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error approving payroll request by CEO:', error);
+        alert('Failed to approve payroll request.');
+    }
+}
+
+async function approveByAccounting(requestId = currentPayrollAccountingRequestId) {
+    if (!requestId || !confirm('Approve this payroll request as Accounting?')) return;
+    try {
+        const response = await fetch(`/api/payroll/approve-by-accounting/${requestId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: getCurrentAdminId() })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Payroll request approved by Accounting. Loan deductions have been applied.');
+            loadPendingPayrollAccountingApprovals();
+            openPayrollAccountingApprovalModal(requestId);
+        } else {
+            alert('Error approving as Accounting: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error approving payroll request by Accounting:', error);
+        alert('Failed to approve payroll request.');
+    }
+}
+
 async function approveLoanRequest(loanId) {
     if (!loanId || !confirm('Approve this loan request?')) return;
 
@@ -1783,7 +1993,11 @@ async function approveLoanRequest(loanId) {
 
         const data = await response.json();
         if (data.success) {
-            alert('Loan request approved successfully.');
+            let successMessage = 'Loan request approved successfully.';
+            if (data.loan?.pdfPath) {
+                successMessage += '\nLoan agreement generated: ' + data.loan.pdfPath;
+            }
+            alert(successMessage);
             loadPendingLoans();
         } else {
             alert('Error approving loan: ' + (data.message || 'Unknown error'));
@@ -2832,7 +3046,12 @@ window.loadPendingSwapRequests = loadPendingSwapRequests;
 window.loadPendingLoans = loadPendingLoans;
 window.loadPendingLeaveRequests = loadPendingLeaveRequests;
 window.loadPendingTimeCorrections = loadPendingTimeCorrections;
+window.loadPendingPayrollAccountingApprovals = loadPendingPayrollAccountingApprovals;
 window.loadRecentApprovals = loadRecentApprovals;
+window.openPayrollAccountingApprovalModal = openPayrollAccountingApprovalModal;
+window.closePayrollAccountingApprovalModal = closePayrollAccountingApprovalModal;
+window.approveByCEO = approveByCEO;
+window.approveByAccounting = approveByAccounting;
 window.approveLoanRequest = approveLoanRequest;
 window.rejectLoanRequest = rejectLoanRequest;
 window.approveChange = approveChange;
@@ -4665,19 +4884,30 @@ window.saveEntirePayroll = async function(event) {
                 const netPay = grossPay - totalDeduct;
 
                 return {
+                    // Employee Information (Complete Table Data)
                     employeeId: emp.employeeId,
                     fullName: emp.fullName,
                     position: emp.position,
                     contractType: emp.contractType,
                     profilePic: emp.profilePic,
+                    grade: emp.grade || '',
+                    role: emp.role || '',
+                    status: emp.status || 'Active',
+                    
+                    // Attendance & Hours Data
+                    totalWorkHours: stats.totalWorkHours,
+                    payableDays: stats.payableDays,
+                    shiftDays: stats.multiplier,
+                    overtimeHours: overtimeHours,
+                    lateMinutes: lateMinutesData,
+                    
+                    // Financial Summary
                     baseSalary: totalBasic,
                     allowances: totalAllow,
                     deductions: totalDeduct,
-                    netPay: netPay,
-                    payableDays: stats.payableDays,
-                    shiftDays: stats.multiplier,
                     grossPay: grossPay,
-                    totalWorkHours: stats.totalWorkHours,
+                    netPay: netPay,
+                    
                     // Detailed Payslip Breakdown
                     breakdown: {
                         // Earnings

@@ -1949,6 +1949,40 @@ function updateYTDSummary(payslips) {
     document.getElementById('ytdDeductionsBar').style.width = (totalDeductions / maxDeductions * 100) + '%';
 }
 
+async function getAccountingAdminName() {
+    try {
+        const response = await fetch('/api/employees/list?role=accounting&limit=100');
+        if (!response.ok) return 'Accounting Admin';
+        const result = await response.json();
+        if (!result.employees || result.employees.length === 0) return 'Accounting Admin';
+
+        const adminRecord = result.employees.find(emp => emp.position && emp.position.toLowerCase().includes('admin'));
+        return adminRecord?.fullName || adminRecord?.employeeId || 'Accounting Admin';
+    } catch (error) {
+        console.warn('Failed to fetch accounting admin name:', error);
+        return 'Accounting Admin';
+    }
+}
+
+async function getHRAdminName() {
+    try {
+        const response = await fetch('/api/employees/admin?role=HR&limit=100');
+        if (!response.ok) return 'Admin';
+        const result = await response.json();
+        if (!result.employees || result.employees.length === 0) return 'Admin';
+
+
+        const adminRecord = result.employees.find(emp => emp.position && emp.position.toLowerCase().includes('admin'));
+        return adminRecord?.fullName || adminRecord?.employeeId || 'Admin';
+    } catch (error) {
+        console.warn('Failed to fetch HR admin name:', error);
+        return 'Admin';
+    }
+}
+
+
+
+
 window.openPayslipModal = async function(payrollId) {
     try {
         const payslip = allPayslips.find(p => p._id === payrollId);
@@ -1957,37 +1991,82 @@ window.openPayslipModal = async function(payrollId) {
         currentPayslipData = payslip;
         const record = payslip.employeeRecord;
         const breakdown = record.breakdown || {};
-        const monthDate = new Date(payslip.month + '-01');
-        const monthName = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        const periodLabel = payslip.period === '15th' ? 'March 1 - 15' : 'March 16 - 31';
+        const [year, month] = (payslip.month || '').split('-');
+        const monthDate = new Date(year, Number(month) - 1);
+        const monthName = monthDate.toLocaleString('default', { month: 'long' });
+        const payPeriodLabel = payslip.period === '15th' ? '1st - 15th' : '16th - End of Month';
 
-        document.getElementById('payslipMonth').textContent = monthName + ' ' + (payslip.period === '15th' ? '(1st - 15th)' : '(16th - End)');
-        document.getElementById('modalPayPeriod').textContent = monthName;
-        document.getElementById('modalEmployeeName').textContent = record.fullName;
-        document.getElementById('modalEmployeeId').textContent = record.employeeId;
-        document.getElementById('modalPosition').textContent = record.position || 'N/A';
+        // --- SET HEADER INFO ---
+        const payslipMonthEl = document.getElementById('payslipMonth');
+        if (payslipMonthEl) payslipMonthEl.textContent = `${monthName} ${year} (${payPeriodLabel})`;
+        
+        const modalPayPeriodEl = document.getElementById('modalPayPeriod');
+        if (modalPayPeriodEl) modalPayPeriodEl.textContent = monthName;
+        
+        const modalEmployeeNameEl = document.getElementById('modalEmployeeName');
+        if (modalEmployeeNameEl) modalEmployeeNameEl.textContent = record.fullName;
+        
+        const modalEmployeeIdEl = document.getElementById('modalEmployeeId');
+        if (modalEmployeeIdEl) modalEmployeeIdEl.textContent = record.employeeId;
+        
+        const modalPositionEl = document.getElementById('modalPosition');
+        if (modalPositionEl) modalPositionEl.textContent = record.position || 'N/A';
+        
         const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
         const department = record.department || profile.department || profile.position || record.position || 'N/A';
-        document.getElementById('modalDepartment').textContent = department;
+        const modalDepartmentEl = document.getElementById('modalDepartment');
+        if (modalDepartmentEl) modalDepartmentEl.textContent = department;
         
         const netPay = breakdown.netPaySummary || record.netPay || 0;
         const grossPay = breakdown.totalEarnings || (record.baseSalary || 0) + (record.allowances || 0);
         const totalDeductions = breakdown.totalDeductions || (record.deductions || 0);
 
-        document.getElementById('modalGrossPay').textContent = `${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('modalNetPay').textContent = `₱${netPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('summaryEarnings').textContent = `${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('summaryDeductions').textContent = `${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        const modalGrossPayEl = document.getElementById('modalGrossPay');
+        if (modalGrossPayEl) modalGrossPayEl.textContent = `₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        const modalNetPayEl = document.getElementById('modalNetPay');
+        if (modalNetPayEl) modalNetPayEl.textContent = `₱${netPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        const summaryEarningsEl = document.getElementById('summaryEarnings');
+        if (summaryEarningsEl) summaryEarningsEl.textContent = `₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        const summaryDeductionsEl = document.getElementById('summaryDeductions');
+        if (summaryDeductionsEl) summaryDeductionsEl.textContent = `₱${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-        // Earnings Breakdown with all allowances
+        // --- KEY METRICS (if element exists) ---
+        const metricsSection = document.getElementById('metricsSection');
+        if (metricsSection) {
+            let metricsHtml = `
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-blue-50 p-3 rounded">
+                        <p class="text-xs text-gray-500">Total Hours</p>
+                        <p class="text-lg font-bold text-[#003D7A]">${record.totalWorkHours || 0} hrs</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded">
+                        <p class="text-xs text-gray-500">Payable Days</p>
+                        <p class="text-lg font-bold text-[#003D7A]">${record.payableDays || 0} days</p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded">
+                        <p class="text-xs text-gray-500">Allowances</p>
+                        <p class="text-lg font-bold text-green-600">₱${(record.allowances || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</p>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded">
+                        <p class="text-xs text-gray-500">Deductions</p>
+                        <p class="text-lg font-bold text-red-600">₱${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2})}</p>
+                    </div>
+                </div>
+            `;
+            metricsSection.innerHTML = metricsHtml;
+        }
+
+        // --- EARNINGS BREAKDOWN ---
         let earningsHtml = `
-            <div class="p-4 flex justify-between hover:bg-gray-50">
-                <span class="text-gray-600">Basic Salary</span>
-                <span class="font-medium">₱${(breakdown.basicSalary || record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <div class="p-4 flex justify-between hover:bg-gray-50 border-b">
+                <span class="text-gray-600 font-medium">Basic Salary</span>
+                <span class="font-semibold">₱${(breakdown.basicSalary || record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
         `;
 
-        // Add allowances with better structure
         const allowances = [
             { label: 'Housing Allowance', value: breakdown.housing },
             { label: 'Travel Allowance', value: breakdown.travel },
@@ -1999,7 +2078,7 @@ window.openPayslipModal = async function(payrollId) {
         allowances.forEach(allowance => {
             if (allowance.value && allowance.value > 0) {
                 earningsHtml += `
-                    <div class="p-4 flex justify-between hover:bg-gray-50 border-t">
+                    <div class="p-4 flex justify-between hover:bg-gray-50 border-b">
                         <span class="text-gray-600">${allowance.label}</span>
                         <span class="font-medium">₱${allowance.value.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                     </div>
@@ -2008,13 +2087,13 @@ window.openPayslipModal = async function(payrollId) {
         });
 
         earningsHtml += `
-            <div class="p-4 flex justify-between border-t bg-blue-50 font-bold">
+            <div class="p-4 flex justify-between bg-blue-50 font-bold border-t-2">
                 <span class="text-gray-900">Total Earnings</span>
                 <span class="text-[#003D7A]">₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
         `;
 
-        // Deductions Breakdown with all deduction types
+        // --- DEDUCTIONS BREAKDOWN ---
         let deductionsHtml = '';
         const deductions = [
             { label: 'Late Deduction', value: breakdown.late },
@@ -2027,7 +2106,7 @@ window.openPayslipModal = async function(payrollId) {
         deductions.forEach((deduction, index) => {
             if (deduction.value && deduction.value > 0) {
                 deductionsHtml += `
-                    <div class="p-4 flex justify-between hover:bg-gray-50 ${index > 0 ? 'border-t' : ''}">
+                    <div class="p-4 flex justify-between hover:bg-gray-50 ${index > 0 ? 'border-t' : 'border-b'}">
                         <span class="text-gray-600">${deduction.label}</span>
                         <span class="font-medium text-red-600">₱${deduction.value.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                     </div>
@@ -2036,16 +2115,55 @@ window.openPayslipModal = async function(payrollId) {
         });
 
         deductionsHtml += `
-            <div class="p-4 flex justify-between border-t bg-red-50 font-bold">
+            <div class="p-4 flex justify-between bg-red-50 font-bold border-t-2">
                 <span class="text-gray-900">Total Deductions</span>
                 <span class="text-red-600">₱${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
         `;
 
-        document.getElementById('modalEarningsContent').innerHTML = earningsHtml;
-        document.getElementById('modalDeductionsContent').innerHTML = deductionsHtml;
+        // --- PAYROLL SUMMARY TABLE ---
+        let summaryHtml = `
+            <div class="border rounded-lg overflow-hidden">
+                <div class="bg-[#003D7A] text-white font-bold p-3">
+                    <div class="flex justify-between">
+                        <span>Description</span>
+                        <span>Amount</span>
+                    </div>
+                </div>
+                <div class="p-3 flex justify-between border-b">
+                    <span class="text-gray-600">Basic Salary</span>
+                    <span>₱${(record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                </div>
+                <div class="p-3 flex justify-between border-b">
+                    <span class="text-gray-600">Total Allowances</span>
+                    <span class="text-green-600 font-medium">₱${(record.allowances || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                </div>
+                <div class="p-3 flex justify-between border-b">
+                    <span class="text-gray-600">Gross Pay</span>
+                    <span class="font-semibold">₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                </div>
+                <div class="p-3 flex justify-between border-b">
+                    <span class="text-gray-600">Total Deductions</span>
+                    <span class="text-red-600 font-medium">₱${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                </div>
+                <div class="p-3 flex justify-between bg-green-50 font-bold">
+                    <span class="text-gray-900">Net Pay</span>
+                    <span class="text-green-700">₱${netPay.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        `;
 
-        document.getElementById('payslipModal').classList.remove('hidden');
+        const modalEarningsContent = document.getElementById('modalEarningsContent');
+        if (modalEarningsContent) modalEarningsContent.innerHTML = earningsHtml;
+        
+        const modalDeductionsContent = document.getElementById('modalDeductionsContent');
+        if (modalDeductionsContent) modalDeductionsContent.innerHTML = deductionsHtml;
+        
+        const payrollSummaryContent = document.getElementById('payrollSummaryContent');
+        if (payrollSummaryContent) payrollSummaryContent.innerHTML = summaryHtml;
+
+        const payslipModal = document.getElementById('payslipModal');
+        if (payslipModal) payslipModal.classList.remove('hidden');
 
     } catch (error) {
         console.error('Error opening payslip modal:', error);
@@ -2099,6 +2217,8 @@ function formatPdfCurrency(amount, usePesoSymbol) {
 }
 
 window.downloadCurrentPayslip = async function() {
+    const reviewedBy = await getAccountingAdminName();
+    const preparedBy = await getHRAdminName();
     if (!currentPayslipData) return;
     
     const jsPDFConstructor = window.jspdf?.jsPDF || window.jsPDF;
@@ -2109,41 +2229,39 @@ window.downloadCurrentPayslip = async function() {
     }
 
     const doc = new jsPDFConstructor();
-    const fontLoaded = await ensurePdfFont(doc);
-    if (fontLoaded) {
-        doc.setFont('Roboto', 'normal');
-    }
-
     const record = currentPayslipData.employeeRecord;
     const breakdown = record.breakdown || {};
-    const monthDate = new Date(currentPayslipData.month + '-01');
-    const monthName = monthDate.toLocaleString('default', { month: 'long' });
     const [year, month] = (currentPayslipData.month || '').split('-');
+    const monthDate = new Date(year, Number(month) - 1);
+    const monthName = monthDate.toLocaleString('default', { month: 'long' });
     const payPeriodText = currentPayslipData.period === '15th' ? '1st - 15th' : '16th - End of Month';
     const compensationType = record.contractType || 'Regular';
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
-    const preparedBy = loggedInUser.fullName || loggedInUser.name || 'Employee';
+    const totalHours = record.totalWorkHours || 0;
+    const grossPay = breakdown.totalEarnings || (record.baseSalary || 0) + (record.allowances || 0);
+    const totalDeductions = breakdown.totalDeductions || (record.deductions || 0);
+    const netPay = breakdown.netPaySummary || (record.netPay || 0);
 
-    // Header with Company Logo and Info
+    // --- HEADER ---
     doc.setFontSize(12);
     doc.setTextColor(0);
     doc.setFont('helvetica', 'bold');
-    doc.text('Zeal Community Medical Mission', 105, 15, { align: 'center' });
+    doc.text('Zeal Community Medical Mission', 105, 42, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Zeal Community Medical Mission Foundation, Payatas A, 221 Upper Jasmin St, Quezon City, Metro Manila', 105, 21, { align: 'center', maxWidth: 170 });
+    doc.text('Zeal Community Medical Mission Foundation, Payatas A, 221 Upper Jasmin St, Quezon City, Metro Manila', 105, 48, { align: 'center', maxWidth: 170 });
 
     doc.setDrawColor(0, 61, 122);
     doc.setLineWidth(0.5);
-    doc.line(20, 26, 190, 26);
+    doc.line(30, 52, 180, 52);
 
     doc.setFontSize(16);
     doc.setTextColor(0, 61, 122);
     doc.setFont('helvetica', 'bold');
-    doc.text('EMPLOYEE PAYSLIP', 105, 35, { align: 'center' });
+    doc.text('MONTHLY EMPLOYEE PAYROLL REPORT', 105, 64, { align: 'center' });
 
-    // Employee Detail Boxes
-    const detailStartY = 41;
+    // --- DETAIL BOXES ---
+    const detailStartY = 70;
     const boxHeight = 36;
     const leftBoxX = 20;
     const rightBoxX = 105;
@@ -2161,33 +2279,50 @@ window.downloadCurrentPayslip = async function() {
 
     doc.setFontSize(8);
     doc.setTextColor(0);
-    doc.setFont('helvetica', 'normal');
     doc.text('Name of Employee :', leftBoxX + 4, detailStartY + 11);
     doc.text('Pay Period :', leftBoxX + 4, detailStartY + 24);
     doc.text('Compensation Type :', rightBoxX + 4, detailStartY + 11);
     doc.text('Salary or Rate :', rightBoxX + 4, detailStartY + 24);
 
     doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
     doc.text(record.fullName || 'N/A', leftBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
-    doc.text(`${monthName} ${year} (${payPeriodText})`, leftBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+    const payPeriodLabel = `${monthName} ${year} (${payPeriodText})`;
+    doc.text(payPeriodLabel, leftBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
     doc.text(compensationType, rightBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
-    doc.text(`PHP ${(record.baseSalary || 0).toLocaleString()}`, rightBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+    doc.text(`PHP ${record.baseSalary.toLocaleString()}`, rightBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
 
-    const grossPay = breakdown.totalEarnings || (record.baseSalary || 0) + (record.allowances || 0);
-    const totalDeductions = breakdown.totalDeductions || (record.deductions || 0);
-    const netPay = breakdown.netPaySummary || (record.netPay || 0);
-
+    // --- KEY INFO ---
     doc.setFontSize(8);
-    doc.text(`Payable Date : ${monthName} 15, ${year}`, 20, detailStartY + boxHeight + 8);
-    doc.text(`Total Hours : ${record.totalWorkHours || 0} hours`, 20, detailStartY + boxHeight + 14);
-    doc.text(`Deductions : PHP ${totalDeductions.toLocaleString()}`, 20, detailStartY + boxHeight + 20);
-    doc.text(`Allowances : PHP ${(record.allowances || 0).toLocaleString()}`, 110, detailStartY + boxHeight + 8);
+    doc.text(`Payable Date : ${monthName} ${new Date(year, Number(month), 0).getDate()}, ${year}`, 20, detailStartY + boxHeight + 18);
+    doc.text(`Total Hours : ${totalHours} hours`, 20, detailStartY + boxHeight + 24);
+    doc.text(`Deductions : PHP ${totalDeductions.toLocaleString()}`, 20, detailStartY + boxHeight + 30);
+    doc.text(`Allowances : PHP ${(record.allowances || 0).toLocaleString()}`, 110, detailStartY + boxHeight + 18);
 
-    // Allowances Breakdown
+    // --- PAYROLL BREAKDOWN TABLE ---
     doc.setFontSize(11);
-    doc.setTextColor(0, 61, 122);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Allowances Breakdown', 20, detailStartY + boxHeight + 34);
+    doc.setTextColor(0);
+    doc.text(`Payroll Breakdown (${monthName} ${year})`, 20, detailStartY + boxHeight + 60);
+
+    const breakdownRows = [
+        [`Week 1-2`, `${totalHours} hours`, `PHP ${totalDeductions.toLocaleString()}`, `PHP ${(record.allowances || 0).toLocaleString()}`, `PHP ${grossPay.toLocaleString()}`, `PHP ${netPay.toLocaleString()}`]
+    ];
+
+    doc.autoTable({
+        startY: detailStartY + boxHeight + 74,
+        head: [['Week of :', 'Hours Worked :', 'Deductions', 'Allowances','Gross Pay :', 'Net Pay :']],
+        body: breakdownRows,
+        foot: [['TOTAL', `${totalHours} hours`, `PHP ${totalDeductions.toLocaleString()}`, `PHP ${(record.allowances || 0).toLocaleString()}`, `PHP ${grossPay.toLocaleString()}`, `PHP ${netPay.toLocaleString()}`]],
+        headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+        footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+        styles: { fontSize: 8, cellPadding: 3 }
+    });
+
+    // --- ALLOWANCES BREAKDOWN ---
+    const allowanceSectionStartY = doc.lastAutoTable.finalY + 12;
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.text('Allowances Breakdown', 20, allowanceSectionStartY);
 
     const allowanceRows = [
         ['Housing Allowance', `PHP ${(breakdown.housing || 0).toLocaleString()}`],
@@ -2199,7 +2334,7 @@ window.downloadCurrentPayslip = async function() {
     ];
 
     doc.autoTable({
-        startY: detailStartY + boxHeight + 40,
+        startY: allowanceSectionStartY + 6,
         head: [['Allowance', 'Amount']],
         body: allowanceRows,
         theme: 'grid',
@@ -2208,11 +2343,10 @@ window.downloadCurrentPayslip = async function() {
         columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 } }
     });
 
-    // Deductions Breakdown
+    // --- DEDUCTIONS BREAKDOWN ---
     const deductionSectionStartY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(11);
-    doc.setTextColor(0, 61, 122);
-    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0);
     doc.text('Deductions Breakdown', 20, deductionSectionStartY);
 
     const deductionRows = [
@@ -2234,11 +2368,10 @@ window.downloadCurrentPayslip = async function() {
         columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 } }
     });
 
-    // Payroll Summary
+    // --- PAYROLL SUMMARY ---
     const summaryTableStartY = doc.lastAutoTable.finalY + 12;
     doc.setFontSize(11);
-    doc.setTextColor(0, 61, 122);
-    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0);
     doc.text('Payroll Summary', 20, summaryTableStartY);
 
     doc.autoTable({
@@ -2255,7 +2388,7 @@ window.downloadCurrentPayslip = async function() {
         columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 60 } }
     });
 
-    // Notes
+    // --- NOTES ---
     const notesStartY = doc.lastAutoTable.finalY + 12;
     doc.setFontSize(9);
     doc.setTextColor(0);
@@ -2270,13 +2403,29 @@ window.downloadCurrentPayslip = async function() {
         doc.text(line, 24, notesStartY + 5 + (index * 4));
     });
 
-    // Signature Lines
+    // --- SIGNATURES ---
     const signatureY = notesStartY + 26;
- 
+    doc.setLineWidth(0.3);
+    doc.line(30, signatureY, 70, signatureY);
+    doc.line(90, signatureY, 130, signatureY);
+    doc.line(150, signatureY, 190, signatureY);
+  
+    doc.setFontSize(9);
+    doc.text('Prepared By :', 30, signatureY - 4);
+    doc.text('Reviewed By :', 90, signatureY - 4);
+    doc.text('Received By :', 150, signatureY - 4);
+    
+    doc.setFontSize(8);
+    doc.text(preparedBy, 30, signatureY + 6);
+    doc.text(reviewedBy, 90, signatureY + 6);
+    doc.text(record.fullName || 'N/A', 150, signatureY + 6);
 
-    // Footer
+    doc.text('HR Payroll Department', 30, signatureY + 11);
+    doc.text('Accounting Admin', 90, signatureY + 11);
+    doc.text('Employee', 150, signatureY + 11);
+
+    // --- FOOTER ---
     doc.setFontSize(7);
-    doc.setTextColor(100);
     doc.text('For any question or concern, contact HR and the payroll team at hrzealcommunity@gmail.com', 20, signatureY + 22, { maxWidth: 170 });
 
     const fileName = `Payslip_${record.fullName.replace(/\s+/g, '_')}_${currentPayslipData.month}.pdf`;
@@ -4218,18 +4367,21 @@ window.closeDownloadSuccessModal = function() {
             return;
         }
 
+        const formData = new FormData();
+        formData.append('employeeId', employeeId);
+        formData.append('loanType', loanType);
+        formData.append('loanAmount', loanAmount);
+        formData.append('repaymentMonths', repaymentMonths);
+        formData.append('loanReason', loanReason);
+
+        const attachmentInput = document.getElementById('loanAttachment');
+        if (attachmentInput && attachmentInput.files && attachmentInput.files[0]) {
+            formData.append('loanAttachment', attachmentInput.files[0]);
+        }
+
         const response = await fetch('/api/employee/request-loan', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                employeeId,
-                loanType,
-                loanAmount,
-                repaymentMonths,
-                loanReason
-            })
+            body: formData
         });
 
         const data = await response.json();
@@ -4361,6 +4513,9 @@ window.closeDownloadSuccessModal = function() {
                             <p class="text-xs text-gray-600">
                                 <strong>Reason:</strong> ${loan.loanReason || 'N/A'}
                             </p>
+
+                            ${loan.attachmentUrl ? `<p class="text-xs text-gray-600 mt-2"><strong>Attachment:</strong> <a href="${loan.attachmentUrl}" target="_blank" class="text-blue-600 hover:underline">View</a></p>` : ''}
+                            ${loan.pdfPath ? `<p class="text-xs text-gray-600 mt-2"><strong>Agreement:</strong> <a href="${loan.pdfPath}" target="_blank" class="text-green-600 hover:underline">View agreement</a></p>` : ''}
 
                             ${approvalDetails}
 

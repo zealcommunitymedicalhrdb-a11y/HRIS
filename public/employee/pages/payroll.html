@@ -43,6 +43,16 @@
                         </button>
                     </div>
                 </div>
+                 <!-- Current Loan Status -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-gray-900 mb-4">Current Loan Status</h3>
+                <div id="currentLoanContent" class="space-y-4">
+                    <div class="text-center py-4">
+                        <div class="text-3xl text-gray-300 mb-2"><i class="fas fa-hand-holding-usd"></i></div>
+                        <p class="text-gray-500 text-sm">Loading loan information...</p>
+                    </div>
+                </div>
+            </div>
 
                 <!-- Loading State -->
                 <div id="loanLoadingState" class="p-6 text-center">
@@ -107,17 +117,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Current Loan Status -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="font-bold text-gray-900 mb-4">Current Loan Status</h3>
-                <div id="currentLoanContent" class="space-y-4">
-                    <div class="text-center py-4">
-                        <div class="text-3xl text-gray-300 mb-2"><i class="fas fa-hand-holding-usd"></i></div>
-                        <p class="text-gray-500 text-sm">Loading loan information...</p>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -169,9 +168,12 @@
                 </div>
                 <div class="p-4 border border-gray-200 rounded-lg">
                     <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Gross Pay</p>
-                    <p class="text-lg font-bold text-green-600">₱<span id="modalGrossPay">0.00</span></p>
+                    <p class="text-lg font-bold text-green-600"><span id="modalGrossPay">0.00</span></p>
                 </div>
             </div>
+
+            <!-- Key Metrics Section -->
+            <div id="metricsSection"></div>
 
             <!-- Earnings Breakdown -->
             <div>
@@ -218,7 +220,7 @@
             <button onclick="closePayslipModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
                 Close
             </button>
-            <button onclick="printPayslip()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium">
+            <button onclick="printPayslip()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium hidden ">
                 <i class="fas fa-print mr-2"></i> Print
             </button>
             <button onclick="downloadCurrentPayslip()" class="px-6 py-2 bg-[#003D7A] text-white rounded-lg hover:bg-[#0052A3] transition font-medium">
@@ -291,6 +293,13 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Loan <span class="text-red-500">*</span></label>
                 <textarea id="loanReason" placeholder="Explain why you need this loan..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003D7A]" rows="3" required></textarea>
+            </div>
+
+            <!-- Attachment -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Loan Attachment (image/PDF)</label>
+                <input type="file" id="loanAttachment" accept="image/*,application/pdf" class="w-full text-sm text-gray-700 file:mr-4 file:px-4 file:py-2 file:border-0 file:text-sm file:font-semibold file:bg-[#003D7A] file:text-white rounded-lg" />
+                <p class="text-xs text-gray-500 mt-1">Optional: attach a picture or PDF of the generated loan agreement or supporting document.</p>
             </div>
 
             <!-- Monthly Repayment Preview -->
