@@ -4573,16 +4573,18 @@ window.saveDeductions = async function() {
 window.saveEntirePayroll = async function(event) {
     const payrollMonth = document.getElementById('payroll-month').value;
     const payrollPeriod = document.getElementById('payroll-period').value;
-    const saveBtn = event.currentTarget;
+    const saveBtn = event?.currentTarget || document.getElementById('savePayrollBtn');
 
     if (!allEmployees || allEmployees.length === 0) {
         alert("No payroll data available to save.");
         return;
     }
 
-    const originalContent = saveBtn.innerHTML;
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    const originalContent = saveBtn?.innerHTML || '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
 
     try {
         await loadPayrollData();
@@ -4596,8 +4598,73 @@ window.saveEntirePayroll = async function(event) {
             month: payrollMonth,
             period: payrollPeriod,
             payrollRecords: allEmployees.map(emp => {
-                const stats = payrollStats.find(s => s.empId === emp.employeeId) || { payableDays: 0, multiplier: 0, overtimeHours: 0, lateMinutes: 0 };
-                const payroll = calculatePayrollTotals(emp, stats);
+                const stats = payrollStats.find(s => s.empId === emp.employeeId) || { 
+                    payableDays: 0, 
+                    multiplier: 0, 
+                    overtimeHours: 0, 
+                    lateMinutes: 0,
+                    totalWorkHours: 0
+                };
+
+                // Calculate all payroll details (matching renderTablePage logic)
+                const dailySalary = Number(emp.baseSalary || 0);
+                const hourlyRate = dailySalary / 8;
+                const minuteRate = hourlyRate / 60;
+                const WORKING_DAYS_PER_MONTH = 21.65;
+
+                // Overtime
+                const overtimeHours = Number(stats.overtimeHours || 0);
+                const overtimePay = Number(emp.overtimePay || 0) > 0
+                    ? Number(emp.overtimePay || 0)
+                    : Math.round(overtimeHours * hourlyRate * 100) / 100;
+
+                // Late deduction
+                const lateMinutesData = Number(stats.lateMinutes || 0);
+                const lateDefault = Math.round(lateMinutesData * minuteRate * 100) / 100;
+                const lateValue = Number(emp.late) > 0 ? Number(emp.late) : lateDefault;
+
+                // Allowances (prorated by payable days)
+                let housingValue = 0, travelValue = 0, mealValue = 0, hazardValue = 0;
+                if (stats.payableDays > 0) {
+                    const housingAuto = Math.round(dailySalary * 0.10 * stats.payableDays * 100) / 100;
+                    housingValue = Number(emp.housing) > 0 ? Number(emp.housing) : housingAuto;
+                    
+                    const travelAuto = Math.round(100 * stats.payableDays * 100) / 100;
+                    travelValue = Number(emp.travel) > 0 ? Number(emp.travel) : travelAuto;
+                    
+                    const mealAuto = Math.round(80 * stats.payableDays * 100) / 100;
+                    mealValue = Number(emp.meal) > 0 ? Number(emp.meal) : mealAuto;
+                    
+                    const hazardAuto = Math.round(dailySalary * 0.25 * stats.payableDays * 100) / 100;
+                    hazardValue = Number(emp.hazardPay) > 0 ? Number(emp.hazardPay) : hazardAuto;
+                }
+
+                const totalAllow = housingValue + travelValue + mealValue + hazardValue + overtimePay;
+
+                // Deductions (prorated by payable days)
+                const weeklySalary = dailySalary * 4;
+                const monthlyBaseSalary = weeklySalary * 4.33;
+                const prorateMultiplier = stats.payableDays / WORKING_DAYS_PER_MONTH;
+
+                const monthlyPhilhealth = Math.round((monthlyBaseSalary * 0.05 / 2) * 100) / 100;
+                const philhealthDefault = Math.round(monthlyPhilhealth * prorateMultiplier * 100) / 100;
+                const philhealthValue = Number(emp.philhealth) > 0 ? Number(emp.philhealth) : philhealthDefault;
+
+                const monthlySss = Math.round((monthlyBaseSalary * 0.045) * 100) / 100;
+                const sssDefault = Math.round(monthlySss * prorateMultiplier * 100) / 100;
+                const sssValue = Number(emp.sss) > 0 ? Number(emp.sss) : sssDefault;
+
+                const monthlyPagibig = monthlyBaseSalary >= 5000 ? 100 : Math.round((monthlyBaseSalary * 0.02) * 100) / 100;
+                const pagibigDefault = Math.round(monthlyPagibig * prorateMultiplier * 100) / 100;
+                const pagibigValue = Number(emp.pagibig) > 0 ? Number(emp.pagibig) : pagibigDefault;
+
+                const loanPayment = Number(emp.loanMonthlyPayment || 0);
+                const totalDeduct = lateValue + philhealthValue + sssValue + pagibigValue + loanPayment;
+
+                // Totals
+                const totalBasic = dailySalary * stats.payableDays;
+                const grossPay = totalBasic + totalAllow;
+                const netPay = grossPay - totalDeduct;
 
                 return {
                     employeeId: emp.employeeId,
@@ -4605,21 +4672,40 @@ window.saveEntirePayroll = async function(event) {
                     position: emp.position,
                     contractType: emp.contractType,
                     profilePic: emp.profilePic,
-                    baseSalary: payroll.totalBasic,
-                    allowances: payroll.totalAllow,
-                    deductions: payroll.totalDeduct,
-                    netPay: payroll.netPay,
+                    baseSalary: totalBasic,
+                    allowances: totalAllow,
+                    deductions: totalDeduct,
+                    netPay: netPay,
                     payableDays: stats.payableDays,
                     shiftDays: stats.multiplier,
+                    grossPay: grossPay,
+                    totalWorkHours: stats.totalWorkHours,
+                    // Detailed Payslip Breakdown
                     breakdown: {
-                        late: payroll.lateValue
+                        // Earnings
+                        basicSalary: totalBasic,
+                        housing: housingValue,
+                        travel: travelValue,
+                        meal: mealValue,
+                        hazardPay: hazardValue,
+                        overtime: overtimePay,
+                        totalEarnings: grossPay,
+                        // Deductions
+                        late: lateValue,
+                        sss: sssValue,
+                        philhealth: philhealthValue,
+                        pagibig: pagibigValue,
+                        loan: loanPayment,
+                        totalDeductions: totalDeduct,
+                        // Summary
+                        netPaySummary: netPay
                     }
                 };
             })
         };
 
         // Logic for the API call
-        const response = await fetch('/api/save-payroll', {
+        const response = await fetch('/api/payroll/save-period', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4643,46 +4729,65 @@ window.saveEntirePayroll = async function(event) {
         console.error(err);
         alert("Failed to connect to the server.");
     } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalContent;
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+        }
     }
 };
 
 window.loadSavedPayroll = async function() {
-    const month = document.getElementById('payroll-month').value;
-    const period = document.getElementById('payroll-period').value;
-    
+    const monthEl = document.getElementById('payroll-month');
+    const periodEl = document.getElementById('payroll-period');
+    const month = monthEl?.value;
+    const period = periodEl?.value;
+
+    if (!month || !period) {
+        alert('Please select both payroll month and period before loading saved payroll.');
+        return;
+    }
+
     try {
-        const response = await fetch(`/api/payroll/load-period?month=${month}&period=${period}`);
+        const response = await fetch(`/api/payroll/load-period?month=${encodeURIComponent(month)}&period=${encodeURIComponent(period)}`);
         const result = await response.json();
 
-        if (result.success && result.data) {
-            allEmployees = result.data.records.map(rec => ({
-                employeeId: rec.employeeId,
-                fullName: rec.fullName,
-                position: rec.position,
-                contractType: rec.contractType,
-                profilePic: rec.profilePic,
-                baseSalary: rec.baseSalary / 14, 
-                totalAllowances: rec.allowances,
-                totalDeductions: rec.deductions,
-                late: rec.breakdown.late ?? rec.breakdown.tax,
-                sss: rec.breakdown.sss,
-                philhealth: rec.breakdown.philhealth,
-                pagibig: rec.breakdown.pagibig,
-                housing: rec.breakdown.housing,
-                travel: rec.breakdown.travel,
-                meal: rec.breakdown.meal,
-                hazardPay: rec.breakdown.hazardPay
-            }));
+        if (!response.ok) {
+            const message = result?.message || 'Unable to load payroll data.';
+            alert(message);
+            return;
+        }
+
+        if (result.success && result.data && Array.isArray(result.data.records)) {
+            allEmployees = result.data.records.map(rec => {
+                const breakdown = rec.breakdown || {};
+                return {
+                    employeeId: rec.employeeId,
+                    fullName: rec.fullName,
+                    position: rec.position,
+                    contractType: rec.contractType,
+                    profilePic: rec.profilePic,
+                    baseSalary: rec.baseSalary ? rec.baseSalary / 14 : 0,
+                    totalAllowances: rec.allowances || 0,
+                    totalDeductions: rec.deductions || 0,
+                    late: breakdown.late ?? breakdown.tax ?? 0,
+                    sss: breakdown.sss || 0,
+                    philhealth: breakdown.philhealth || 0,
+                    pagibig: breakdown.pagibig || 0,
+                    housing: breakdown.housing || 0,
+                    travel: breakdown.travel || 0,
+                    meal: breakdown.meal || 0,
+                    hazardPay: breakdown.hazardPay || 0
+                };
+            });
             currentPage = 1;
             renderTablePage();
             alert(`Loaded: ${month} - ${period} period`);
         } else {
-            alert("No payroll records found for this specific period.");
+            alert(result.message || "No payroll records found for this specific period.");
         }
     } catch (err) {
-        alert("Failed to load payroll data.");
+        console.error('loadSavedPayroll error:', err);
+        alert("Failed to load payroll data. Check console for details.");
     }
 };
 

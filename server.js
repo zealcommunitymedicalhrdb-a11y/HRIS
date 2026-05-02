@@ -2966,18 +2966,24 @@ app.post('/api/payroll/save-period', async (req, res) => {
     }
 });
 
-// GET: Load payroll for a specific month
+// GET: Load payroll for a specific month and period
 app.get('/api/payroll/load-period', async (req, res) => {
     try {
-        const { month } = req.query;
-        const payroll = await Payroll.findOne({ month });
+        const { month, period } = req.query;
+
+        if (!month || !period) {
+            return res.status(400).json({ success: false, message: "Month and period are required to load payroll." });
+        }
+
+        const payroll = await Payroll.findOne({ month, period });
 
         if (!payroll) {
-            return res.status(404).json({ success: false, message: "No payroll found for this month." });
+            return res.status(404).json({ success: false, message: "No payroll found for this month and period." });
         }
 
         res.json({ success: true, data: payroll });
     } catch (error) {
+        console.error('Error loading payroll period:', error);
         res.status(500).json({ success: false, message: "Server error while loading payroll." });
     }
 });

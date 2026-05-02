@@ -1956,6 +1956,7 @@ window.openPayslipModal = async function(payrollId) {
 
         currentPayslipData = payslip;
         const record = payslip.employeeRecord;
+        const breakdown = record.breakdown || {};
         const monthDate = new Date(payslip.month + '-01');
         const monthName = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
         const periodLabel = payslip.period === '15th' ? 'March 1 - 15' : 'March 16 - 31';
@@ -1968,70 +1969,76 @@ window.openPayslipModal = async function(payrollId) {
         const profile = JSON.parse(localStorage.getItem('employeeProfile') || '{}');
         const department = record.department || profile.department || profile.position || record.position || 'N/A';
         document.getElementById('modalDepartment').textContent = department;
-        document.getElementById('modalNetPay').textContent = `₱${(record.netPay || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        const netPay = breakdown.netPaySummary || record.netPay || 0;
+        const grossPay = breakdown.totalEarnings || (record.baseSalary || 0) + (record.allowances || 0);
+        const totalDeductions = breakdown.totalDeductions || (record.deductions || 0);
 
-        // Earnings
+        document.getElementById('modalGrossPay').textContent = `${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('modalNetPay').textContent = `₱${netPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('summaryEarnings').textContent = `${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('summaryDeductions').textContent = `${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+        // Earnings Breakdown with all allowances
         let earningsHtml = `
-            <div class="flex justify-between">
+            <div class="p-4 flex justify-between hover:bg-gray-50">
                 <span class="text-gray-600">Basic Salary</span>
-                <span class="font-medium">₱${(record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                <span class="font-medium">₱${(breakdown.basicSalary || record.baseSalary || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
         `;
 
-        if (record.breakdown?.housing) {
-            earningsHtml += `
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Housing Allowance</span>
-                    <span class="font-medium">₱${record.breakdown.housing.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-            `;
-        }
-        if (record.breakdown?.travel) {
-            earningsHtml += `
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Travel Allowance</span>
-                    <span class="font-medium">₱${record.breakdown.travel.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-            `;
-        }
-        if (record.breakdown?.meal) {
-            earningsHtml += `
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Meal Allowance</span>
-                    <span class="font-medium">₱${record.breakdown.meal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-            `;
-        }
+        // Add allowances with better structure
+        const allowances = [
+            { label: 'Housing Allowance', value: breakdown.housing },
+            { label: 'Travel Allowance', value: breakdown.travel },
+            { label: 'Meal Allowance', value: breakdown.meal },
+            { label: 'Hazard Pay', value: breakdown.hazardPay },
+            { label: 'Overtime Pay', value: breakdown.overtime }
+        ];
 
-        const grossPay = (record.baseSalary || 0) + (record.allowances || 0);
+        allowances.forEach(allowance => {
+            if (allowance.value && allowance.value > 0) {
+                earningsHtml += `
+                    <div class="p-4 flex justify-between hover:bg-gray-50 border-t">
+                        <span class="text-gray-600">${allowance.label}</span>
+                        <span class="font-medium">₱${allowance.value.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+                `;
+            }
+        });
+
         earningsHtml += `
-            <div class="flex justify-between border-t pt-3 mt-3">
-                <span class="font-bold text-gray-900">Gross Pay</span>
-                <span class="font-bold text-gray-900">₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <div class="p-4 flex justify-between border-t bg-blue-50 font-bold">
+                <span class="text-gray-900">Total Earnings</span>
+                <span class="text-[#003D7A]">₱${grossPay.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
         `;
 
-        // Deductions
-        let deductionsHtml = `
-            <div class="flex justify-between">
-                <span class="text-gray-600">Withholding Tax</span>
-                <span class="font-medium text-red-600">₱${(record.breakdown?.tax || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-600">SSS Contribution</span>
-                <span class="font-medium text-red-600">₱${(record.breakdown?.sss || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-600">PhilHealth</span>
-                <span class="font-medium text-red-600">₱${(record.breakdown?.philhealth || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-600">Pag-IBIG</span>
-                <span class="font-medium text-red-600">₱${(record.breakdown?.pagibig || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-            </div>
-            <div class="flex justify-between border-t pt-3 mt-3">
-                <span class="font-bold text-gray-900">Total Deductions</span>
-                <span class="font-bold text-red-600">₱${(record.deductions || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+        // Deductions Breakdown with all deduction types
+        let deductionsHtml = '';
+        const deductions = [
+            { label: 'Late Deduction', value: breakdown.late },
+            { label: 'SSS Contribution', value: breakdown.sss },
+            { label: 'PhilHealth Contribution', value: breakdown.philhealth },
+            { label: 'Pag-IBIG Contribution', value: breakdown.pagibig },
+            { label: 'Loan Payment', value: breakdown.loan }
+        ];
+
+        deductions.forEach((deduction, index) => {
+            if (deduction.value && deduction.value > 0) {
+                deductionsHtml += `
+                    <div class="p-4 flex justify-between hover:bg-gray-50 ${index > 0 ? 'border-t' : ''}">
+                        <span class="text-gray-600">${deduction.label}</span>
+                        <span class="font-medium text-red-600">₱${deduction.value.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+                `;
+            }
+        });
+
+        deductionsHtml += `
+            <div class="p-4 flex justify-between border-t bg-red-50 font-bold">
+                <span class="text-gray-900">Total Deductions</span>
+                <span class="text-red-600">₱${totalDeductions.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
         `;
 
@@ -2108,49 +2115,169 @@ window.downloadCurrentPayslip = async function() {
     }
 
     const record = currentPayslipData.employeeRecord;
-    const pesoSymbol = fontLoaded;
+    const breakdown = record.breakdown || {};
+    const monthDate = new Date(currentPayslipData.month + '-01');
+    const monthName = monthDate.toLocaleString('default', { month: 'long' });
+    const [year, month] = (currentPayslipData.month || '').split('-');
+    const payPeriodText = currentPayslipData.period === '15th' ? '1st - 15th' : '16th - End of Month';
+    const compensationType = record.contractType || 'Regular';
+    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+    const preparedBy = loggedInUser.fullName || loggedInUser.name || 'Employee';
+
+    // Header with Company Logo and Info
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Zeal Community Medical Mission', 105, 15, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Zeal Community Medical Mission Foundation, Payatas A, 221 Upper Jasmin St, Quezon City, Metro Manila', 105, 21, { align: 'center', maxWidth: 170 });
+
+    doc.setDrawColor(0, 61, 122);
+    doc.setLineWidth(0.5);
+    doc.line(20, 26, 190, 26);
 
     doc.setFontSize(16);
     doc.setTextColor(0, 61, 122);
-    doc.text('ZEAL COMMUNITY MEDICAL MISSION FOUNDATION', 105, 15, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Payslip: ${currentPayslipData.month}`, 105, 22, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('EMPLOYEE PAYSLIP', 105, 35, { align: 'center' });
 
-    doc.autoTable({
-        startY: 30,
-        body: [
-            ['Employee Name:', record.fullName, 'Employee ID:', record.employeeId],
-            ['Position:', record.position || 'N/A', 'Period:', currentPayslipData.period],
-        ],
-        theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 2, font: fontLoaded ? 'Roboto' : 'helvetica' }
-    });
+    // Employee Detail Boxes
+    const detailStartY = 41;
+    const boxHeight = 36;
+    const leftBoxX = 20;
+    const rightBoxX = 105;
+    const boxWidth = 85;
+    const labelWidth = 38;
 
-    const grossPay = (record.baseSalary || 0) + (record.allowances || 0);
-    doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 10,
-        head: [['Earnings', 'Amount', 'Deductions', 'Amount']],
-        body: [
-            ['Basic Salary', formatPdfCurrency(record.baseSalary || 0, pesoSymbol), 'Tax', formatPdfCurrency(record.breakdown?.tax || 0, pesoSymbol)],
-            ['Allowances', formatPdfCurrency(record.allowances || 0, pesoSymbol), 'SSS', formatPdfCurrency(record.breakdown?.sss || 0, pesoSymbol)],
-            ['', '', 'PhilHealth', formatPdfCurrency(record.breakdown?.philhealth || 0, pesoSymbol)],
-            ['', '', 'Pag-IBIG', formatPdfCurrency(record.breakdown?.pagibig || 0, pesoSymbol)],
-        ],
-        foot: [['Total Gross', formatPdfCurrency(grossPay, pesoSymbol), 'Total Deduct', formatPdfCurrency(record.deductions || 0, pesoSymbol)]],
-        headStyles: { fillColor: [0, 61, 122] },
-        footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
-        styles: { font: fontLoaded ? 'Roboto' : 'helvetica' }
-    });
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(leftBoxX, detailStartY, boxWidth, boxHeight);
+    doc.rect(rightBoxX, detailStartY, boxWidth, boxHeight);
 
-    doc.setFontSize(12);
+    doc.setFillColor(230, 230, 235);
+    doc.rect(leftBoxX, detailStartY, labelWidth, boxHeight, 'F');
+    doc.rect(rightBoxX, detailStartY, labelWidth, boxHeight, 'F');
+
+    doc.setFontSize(8);
     doc.setTextColor(0);
-    if (fontLoaded) {
-        doc.text(`NET PAY: ₱${(record.netPay || 0).toLocaleString('en-PH')}`, 190, doc.lastAutoTable.finalY + 15, { align: 'right' });
-    } else {
-        doc.text(`NET PAY: P ${(record.netPay || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, doc.lastAutoTable.finalY + 15, { align: 'right' });
-    }
+    doc.setFont('helvetica', 'normal');
+    doc.text('Name of Employee :', leftBoxX + 4, detailStartY + 11);
+    doc.text('Pay Period :', leftBoxX + 4, detailStartY + 24);
+    doc.text('Compensation Type :', rightBoxX + 4, detailStartY + 11);
+    doc.text('Salary or Rate :', rightBoxX + 4, detailStartY + 24);
+
+    doc.setFontSize(9);
+    doc.text(record.fullName || 'N/A', leftBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
+    doc.text(`${monthName} ${year} (${payPeriodText})`, leftBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+    doc.text(compensationType, rightBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
+    doc.text(`PHP ${(record.baseSalary || 0).toLocaleString()}`, rightBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+
+    const grossPay = breakdown.totalEarnings || (record.baseSalary || 0) + (record.allowances || 0);
+    const totalDeductions = breakdown.totalDeductions || (record.deductions || 0);
+    const netPay = breakdown.netPaySummary || (record.netPay || 0);
+
+    doc.setFontSize(8);
+    doc.text(`Payable Date : ${monthName} 15, ${year}`, 20, detailStartY + boxHeight + 8);
+    doc.text(`Total Hours : ${record.totalWorkHours || 0} hours`, 20, detailStartY + boxHeight + 14);
+    doc.text(`Deductions : PHP ${totalDeductions.toLocaleString()}`, 20, detailStartY + boxHeight + 20);
+    doc.text(`Allowances : PHP ${(record.allowances || 0).toLocaleString()}`, 110, detailStartY + boxHeight + 8);
+
+    // Allowances Breakdown
+    doc.setFontSize(11);
+    doc.setTextColor(0, 61, 122);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Allowances Breakdown', 20, detailStartY + boxHeight + 34);
+
+    const allowanceRows = [
+        ['Housing Allowance', `PHP ${(breakdown.housing || 0).toLocaleString()}`],
+        ['Travel Allowance', `PHP ${(breakdown.travel || 0).toLocaleString()}`],
+        ['Meal Allowance', `PHP ${(breakdown.meal || 0).toLocaleString()}`],
+        ['Hazard Pay', `PHP ${(breakdown.hazardPay || 0).toLocaleString()}`],
+        ['Overtime Pay', `PHP ${(breakdown.overtime || 0).toLocaleString()}`],
+        ['Total Allowances', `PHP ${(record.allowances || 0).toLocaleString()}`]
+    ];
+
+    doc.autoTable({
+        startY: detailStartY + boxHeight + 40,
+        head: [['Allowance', 'Amount']],
+        body: allowanceRows,
+        theme: 'grid',
+        headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 } }
+    });
+
+    // Deductions Breakdown
+    const deductionSectionStartY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(11);
+    doc.setTextColor(0, 61, 122);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Deductions Breakdown', 20, deductionSectionStartY);
+
+    const deductionRows = [
+        ['Late Deduction', `PHP ${(breakdown.late || 0).toLocaleString()}`],
+        ['SSS Contribution', `PHP ${(breakdown.sss || 0).toLocaleString()}`],
+        ['PhilHealth Contribution', `PHP ${(breakdown.philhealth || 0).toLocaleString()}`],
+        ['Pag-IBIG Contribution', `PHP ${(breakdown.pagibig || 0).toLocaleString()}`],
+        ['Loan Payment', `PHP ${(breakdown.loan || 0).toLocaleString()}`],
+        ['Total Deductions', `PHP ${totalDeductions.toLocaleString()}`]
+    ];
+
+    doc.autoTable({
+        startY: deductionSectionStartY + 6,
+        head: [['Deduction', 'Amount']],
+        body: deductionRows,
+        theme: 'grid',
+        headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 } }
+    });
+
+    // Payroll Summary
+    const summaryTableStartY = doc.lastAutoTable.finalY + 12;
+    doc.setFontSize(11);
+    doc.setTextColor(0, 61, 122);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Payroll Summary', 20, summaryTableStartY);
+
+    doc.autoTable({
+        startY: summaryTableStartY + 6,
+        theme: 'plain',
+        body: [
+            ['Basic Salary', `PHP ${(record.baseSalary || 0).toLocaleString()}`],
+            ['Allowances', `PHP ${(record.allowances || 0).toLocaleString()}`],
+            ['Deductions', `PHP ${totalDeductions.toLocaleString()}`],
+            ['Gross Pay', `PHP ${grossPay.toLocaleString()}`],
+            ['Net Pay', `PHP ${netPay.toLocaleString()}`]
+        ],
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 60 } }
+    });
+
+    // Notes
+    const notesStartY = doc.lastAutoTable.finalY + 12;
+    doc.setFontSize(9);
+    doc.setTextColor(0);
+    doc.text('Notes :', 20, notesStartY);
+    doc.setFontSize(8);
+    const notes = [
+        '• Gross Pay: Total before any deductions.',
+        '• Deductions: Includes late deductions, social contributions, and loan repayments.',
+        '• Net Pay: Final amount after deductions.'
+    ];
+    notes.forEach((line, index) => {
+        doc.text(line, 24, notesStartY + 5 + (index * 4));
+    });
+
+    // Signature Lines
+    const signatureY = notesStartY + 26;
+ 
+
+    // Footer
+    doc.setFontSize(7);
+    doc.setTextColor(100);
+    doc.text('For any question or concern, contact HR and the payroll team at hrzealcommunity@gmail.com', 20, signatureY + 22, { maxWidth: 170 });
 
     const fileName = `Payslip_${record.fullName.replace(/\s+/g, '_')}_${currentPayslipData.month}.pdf`;
     doc.save(fileName);
