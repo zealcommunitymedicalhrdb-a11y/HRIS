@@ -1644,6 +1644,7 @@
                 console.log('📅 Payroll page loaded, calling loadEmployeePayslips directly');
                 loadEmployeePayslips();
                 loadLoanRequests();
+                loadCurrentLoanStatus();
 
                 const loanAmountInput = document.getElementById('loanAmount');
                 const repaymentPeriodInput = document.getElementById('repaymentPeriod');
@@ -1701,6 +1702,50 @@
     } catch (error) {
         console.error('❌ Error loading payslips:', error);
         showEmptyState();
+    }
+}
+
+async function loadCurrentLoanStatus() {
+    try {
+        const employeeId = localStorage.getItem('employeeId');
+        if (!employeeId) return;
+
+        const container = document.getElementById('currentLoanContent');
+        const response = await fetch(`/api/loans/employee/${employeeId}`);
+        const data = await response.json();
+
+        if (data.success && data.loans && data.loans.length > 0) {
+            const activeLoan = data.loans.find(l => l.status === 'approved') || data.loans[0];
+            const loanAmount = activeLoan.appliedLoanAmount || activeLoan.loanAmount;
+            const monthlyPayment = activeLoan.monthlyRepayment || 0;
+            
+            // To show "Remaining Balance", you would ideally track payments 
+            // but for now, we show the current scheduled deduction
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-3 bg-gray-50 rounded-lg border-l-4 border-[#003D7A]">
+                        <p class="text-xs text-gray-500 uppercase font-bold">Active Loan Balance</p>
+                        <p class="text-xl font-bold text-gray-900">₱${loanAmount.toLocaleString()}</p>
+                    </div>
+
+                    <div class="flex justify-between items-center py-2 border-b border-dashed">
+                        <span class="text-sm text-gray-600">Current Deduction</span>
+                        <span class="font-bold text-red-600">-₱${monthlyPayment.toLocaleString()}</span>
+                    </div>
+
+                    <div class="bg-blue-50 p-3 rounded-lg flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 mt-1"></i>
+                        <p class="text-xs text-blue-800">
+                            This deduction is automatically applied every time your payslip is generated until the total of ₱${loanAmount.toLocaleString()} is cleared.
+                        </p>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `<p class="text-center text-gray-500 py-4">No active loan found.</p>`;
+        }
+    } catch (error) {
+        console.error('Error:', error);
     }
 }
 

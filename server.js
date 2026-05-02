@@ -346,6 +346,32 @@ const LoanRequest = mongoose.model('LoanRequest', loanRequestSchema, 'loanReques
 
 
 
+// --- LOAN API ROUTE ---
+// Handles the request from your loadCurrentLoanStatus function
+app.get('/api/loans/employee/:employeeId', async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+
+        // Fetching records from the loanRequests collection
+        const loans = await LoanRequest.find({ employeeId })
+            .sort({ submittedAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            loans: loans
+        });
+    } catch (error) {
+        console.error('Error fetching loans:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server Error'
+        });
+    }
+});
+
+
+
+
 // 1. DEFINE STORAGE FIRST
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -2197,15 +2223,27 @@ app.get('/api/attendance', async (req, res) => {
 app.get('/api/attendance/employee/:employeeId', async (req, res) => {
     try {
         const { employeeId } = req.params;
-        const { month, period } = req.query; // e.g., month=2026-04, period=1-15
+        const { month, period, startDate: queryStart, endDate: queryEnd } = req.query;
 
-        if (!month || !period) {
-            return res.status(400).json({ success: false, message: 'Month and period are required' });
+        let startDate;
+        let endDate;
+
+        if (queryStart && queryEnd) {
+            startDate = new Date(queryStart);
+            endDate = new Date(queryEnd);
+            if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                return res.status(400).json({ success: false, message: 'Invalid date range' });
+            }
+        } else if (month && period) {
+            const [year, monthNum] = month.split('-').map(Number);
+            if (!year || !monthNum) {
+                return res.status(400).json({ success: false, message: 'Invalid month format' });
+            }
+            startDate = period === '1-15' ? new Date(year, monthNum - 1, 1) : new Date(year, monthNum - 1, 16);
+            endDate = period === '1-15' ? new Date(year, monthNum - 1, 15) : new Date(year, monthNum, 0);
+        } else {
+            return res.status(400).json({ success: false, message: 'Month and period or startDate and endDate are required' });
         }
-
-        const [year, monthNum] = month.split('-');
-        const startDate = period === '1-15' ? new Date(year, monthNum - 1, 1) : new Date(year, monthNum - 1, 16);
-        const endDate = period === '1-15' ? new Date(year, monthNum - 1, 15) : new Date(year, monthNum, 0); // Last day of month
 
         const records = await Attendance.find({
             empId: employeeId,
@@ -2700,7 +2738,7 @@ app.get('/api/employees/payroll-list', async (req, res) => {
                     hazardPay: { $ifNull: ["$profile.hazardPay", 0] },
 
                     // --- DEDUCTION BREAKDOWN ---
-                    tax: { $ifNull: ["$profile.tax", 0] },
+                    late: { $ifNull: ["$profile.late", 0] },
                     philhealth: { $ifNull: ["$profile.philhealth", 0] },
                     sss: { $ifNull: ["$profile.sss", 0] },
                     pagibig: { $ifNull: ["$profile.pagibig", 0] },
@@ -2717,7 +2755,7 @@ app.get('/api/employees/payroll-list', async (req, res) => {
                     loanMonthlyPayment: { $ifNull: [ { $arrayElemAt: ["$approvedLoans.totalMonthlyRepayment", 0] }, 0 ] },
                     totalDeductions: {
                         $add: [
-                            { $ifNull: ["$profile.tax", 0] },
+                            { $ifNull: ["$profile.late", 0] },
                             { $ifNull: ["$profile.philhealth", 0] },
                             { $ifNull: ["$profile.sss", 0] },
                             { $ifNull: ["$profile.pagibig", 0] },
@@ -2736,7 +2774,7 @@ app.get('/api/employees/payroll-list', async (req, res) => {
                             default: 350
                         }
                     },
-                    schedule: { $literal: "07:30 AM - 08:00 PM (4 Days)" }
+                    schedule: { $literal: "07:30 AM - 04:30 PM (4 Days)" }
                 }
             }
         ];
@@ -2807,14 +2845,14 @@ app.post('/api/employees/update-allowances', async (req, res) => {
 
 app.post('/api/employees/update-deductions', async (req, res) => {
     try {
-        const { employeeId, tax, philhealth, sss, pagibig } = req.body;
+        const { employeeId, late, philhealth, sss, pagibig, tax } = req.body;
         
-        // Calculate total deductions
-        const t = Number(tax) || 0;
+        // Accept legacy 'tax' payload as fallback for late deduction
+        const l = Number(late ?? tax) || 0;
         const p = Number(philhealth) || 0;
         const s = Number(sss) || 0;
-        const l = Number(pagibig) || 0;
-        const totalDeductions = t + p + s + l;
+        const g = Number(pagibig) || 0;
+        const totalDeductions = l + p + s + g;
 
         let foundModel = null;
         for (const role in models) {
@@ -2828,7 +2866,7 @@ app.post('/api/employees/update-deductions', async (req, res) => {
             { employeeId },
             { 
                 $set: { 
-                    tax: t, philhealth: p, sss: s, pagibig: l, 
+                    late: l, philhealth: p, sss: s, pagibig: g, 
                     totalDeductions: totalDeductions 
                 } 
             },
@@ -2944,6 +2982,231 @@ app.get('/api/payroll/load-period', async (req, res) => {
     }
 });
 
+// POST: Submit payroll for accounting approval
+app.post('/api/payroll/submit-for-accounting', upload.single('payrollDocument'), async (req, res) => {
+    try {
+        const { month, period, startDate, endDate, notes, payrollData } = req.body;
+        const submittedBy = req.session.userId || 'admin';
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Document file is required' });
+        }
+
+        // Check if already submitted for this month/period
+        const existingRequest = await PayrollAccountingRequest.findOne({
+            month,
+            period,
+            status: { $in: ['pending', 'approved'] }
+        });
+
+        if (existingRequest) {
+            return res.status(400).json({ success: false, message: 'Payroll already submitted for approval' });
+        }
+
+        const newRequest = new PayrollAccountingRequest({
+            month,
+            period,
+            startDate,
+            endDate,
+            dateRange: `${startDate} to ${endDate}`,
+            documentFile: req.file.path,
+            notes,
+            submittedBy,
+            payrollData: JSON.parse(payrollData || '[]')
+        });
+
+        await newRequest.save();
+
+        // Create notification for admins
+        const notifData = {
+            title: 'Payroll Submitted for Approval',
+            message: `Payroll for ${month} (${period}) has been submitted for CEO and Accounting approval.`,
+            type: 'PAYROLL',
+            recipientId: 'all-admins',
+            url: '/admin/pages/payroll.html'
+        };
+
+        const newNotif = new Notification(notifData);
+        await newNotif.save();
+        io.emit('new-notification', newNotif);
+
+        res.json({
+            success: true,
+            message: 'Payroll submitted for approval successfully',
+            requestId: newRequest._id
+        });
+
+    } catch (error) {
+        console.error('Error submitting payroll for accounting:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// GET: Get all payroll accounting requests
+app.get('/api/payroll/accounting-requests', async (req, res) => {
+    try {
+        const requests = await PayrollAccountingRequest.find({})
+            .sort({ createdAt: -1 })
+            .limit(50);
+
+        res.json({ success: true, data: requests });
+    } catch (error) {
+        console.error('Error fetching accounting requests:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// GET: Get specific payroll accounting request
+app.get('/api/payroll/accounting-requests/:requestId', async (req, res) => {
+    try {
+        const request = await PayrollAccountingRequest.findById(req.params.requestId);
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Request not found' });
+        }
+
+        res.json({ success: true, data: request });
+    } catch (error) {
+        console.error('Error fetching accounting request:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// PUT: CEO approves payroll accounting request
+app.put('/api/payroll/approve-by-ceo/:requestId', async (req, res) => {
+    try {
+        const { adminId } = req.body;
+        const request = await PayrollAccountingRequest.findById(req.params.requestId);
+
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Request not found' });
+        }
+
+        if (request.status !== 'pending') {
+            return res.status(400).json({ success: false, message: 'Request already processed' });
+        }
+
+        request.approvedByCEO = adminId;
+        request.approvedByCEOAt = new Date();
+        await request.save();
+
+        // Create notification
+        const notifData = {
+            title: 'CEO Approved Payroll',
+            message: `Payroll for ${request.month} (${request.period}) has been approved by CEO. Waiting for Accounting approval.`,
+            type: 'PAYROLL',
+            recipientId: 'all-admins',
+            url: '/admin/pages/payroll.html'
+        };
+
+        const newNotif = new Notification(notifData);
+        await newNotif.save();
+        io.emit('new-notification', newNotif);
+
+        res.json({ success: true, message: 'CEO approval recorded successfully' });
+
+    } catch (error) {
+        console.error('Error approving by CEO:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// PUT: Accounting approves payroll accounting request and applies loan deductions
+app.put('/api/payroll/approve-by-accounting/:requestId', async (req, res) => {
+    try {
+        const { adminId } = req.body;
+        const request = await PayrollAccountingRequest.findById(req.params.requestId);
+
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Request not found' });
+        }
+
+        if (request.status !== 'pending' || !request.approvedByCEO) {
+            return res.status(400).json({ success: false, message: 'Request not ready for accounting approval' });
+        }
+
+        request.approvedByAccounting = adminId;
+        request.approvedByAccountingAt = new Date();
+        request.status = 'approved';
+
+        // Apply loan deductions
+        await applyLoanDeductionsToPayroll(request);
+        request.loanDeductionsApplied = true;
+
+        await request.save();
+
+        // Create notification
+        const notifData = {
+            title: 'Payroll Approved & Loan Deductions Applied',
+            message: `Payroll for ${request.month} (${request.period}) has been approved. Loan deductions have been applied automatically.`,
+            type: 'PAYROLL',
+            recipientId: 'all-admins',
+            url: '/admin/pages/payroll.html'
+        };
+
+        const newNotif = new Notification(notifData);
+        await newNotif.save();
+        io.emit('new-notification', newNotif);
+
+        res.json({ success: true, message: 'Accounting approval recorded and loan deductions applied' });
+
+    } catch (error) {
+        console.error('Error approving by accounting:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Helper function to apply loan deductions
+async function applyLoanDeductionsToPayroll(request) {
+    try {
+        // Get all approved loans
+        const approvedLoans = await LoanRequest.find({
+            status: 'approved',
+            remainingBalance: { $gt: 0 }
+        });
+
+        const employeeIdsWithLoans = approvedLoans.map(loan => loan.employeeId);
+
+        // Update payroll data with loan deductions
+        for (const employee of request.payrollData) {
+            const employeeLoan = approvedLoans.find(loan => loan.employeeId === employee.employeeId);
+
+            if (employeeLoan) {
+                const monthlyRepayment = employeeLoan.monthlyRepayment || 0;
+
+                // Add loan deduction to deductions
+                employee.deductions = (employee.deductions || 0) + monthlyRepayment;
+
+                // Subtract from net pay
+                employee.netPay = (employee.netPay || 0) - monthlyRepayment;
+
+                // Update loan balance
+                employeeLoan.remainingBalance -= monthlyRepayment;
+                if (employeeLoan.remainingBalance <= 0) {
+                    employeeLoan.status = 'completed';
+                }
+                await employeeLoan.save();
+
+                // Create notification for employee
+                const employeeNotif = {
+                    title: 'Loan Deduction Applied',
+                    message: `₱${monthlyRepayment.toLocaleString()} has been deducted from your payroll for loan repayment.`,
+                    type: 'PAYROLL',
+                    recipientId: employee.employeeId,
+                    url: '/employee/pages/payroll.html'
+                };
+
+                const newEmployeeNotif = new Notification(employeeNotif);
+                await newEmployeeNotif.save();
+                io.emit('new-notification', newEmployeeNotif);
+            }
+        }
+
+    } catch (error) {
+        console.error('Error applying loan deductions:', error);
+        throw error;
+    }
+}
+
 
 
 
@@ -2983,6 +3246,28 @@ const shiftSwapRequestSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const ShiftSwapRequest = mongoose.model('ShiftSwapRequest', shiftSwapRequestSchema, 'shiftSwapRequests');
+
+// Payroll Accounting Request Schema
+const payrollAccountingRequestSchema = new mongoose.Schema({
+    month: { type: String, required: true },
+    period: { type: String, required: true },
+    startDate: { type: String, required: true },
+    endDate: { type: String, required: true },
+    dateRange: { type: String, required: true },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    documentFile: { type: String, required: true }, // File path
+    notes: { type: String },
+    submittedBy: { type: String, required: true },
+    submittedAt: { type: Date, default: Date.now },
+    approvedByCEO: { type: String },
+    approvedByCEOAt: { type: Date },
+    approvedByAccounting: { type: String },
+    approvedByAccountingAt: { type: Date },
+    payrollData: { type: Array, required: true },
+    loanDeductionsApplied: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const PayrollAccountingRequest = mongoose.model('PayrollAccountingRequest', payrollAccountingRequestSchema, 'payrollAccountingRequests');
 
 // Leave Request Schema
 const leaveRequestSchema = new mongoose.Schema({
@@ -3923,13 +4208,18 @@ app.get('/api/payroll/calculate-all', async (req, res) => {
             return acc;
         }, {});
 
-        const LATE_GRACE_PERIOD = "08:15 AM";
+        // Call time: 7:30 AM (any check-in after this is considered late)
+        const CALL_TIME = "07:30 AM";
+        const END_OF_SHIFT = "04:30 PM"; // End of shift for overtime calculation
+        const BREAK_DURATION = 1; // 1 hour break
         const payrollSummary = [];
 
         for (const empId in groupedByEmployee) {
             let totalPayableDays = 0;
             let totalWorkHours = 0;
             let lateCount = 0;
+            let overtimeHours = 0;
+            let lateMinutes = 0;
             const uniqueDates = new Set();
             const records = groupedByEmployee[empId];
 
@@ -3942,21 +4232,31 @@ app.get('/api/payroll/calculate-all', async (req, res) => {
 
                 const checkInTime = moment(record.checkIn, "hh:mm A");
                 const checkOutTime = moment(record.checkOut, "hh:mm A");
-                const lateThreshold = moment(LATE_GRACE_PERIOD, "hh:mm A");
+                const callTime = moment(CALL_TIME, "hh:mm A");
+                const endOfShift = moment(END_OF_SHIFT, "hh:mm A");
 
                 if (checkOutTime.isBefore(checkInTime)) checkOutTime.add(1, 'day');
 
+                // Calculate actual hours worked minus the 1-hour break
                 const actualHours = moment.duration(checkOutTime.diff(checkInTime)).asHours();
-                const cappedHours = Math.min(actualHours, 8);
-                totalWorkHours += cappedHours;
+                const workedHours = actualHours - BREAK_DURATION;
+                totalWorkHours += workedHours;
 
-                if (cappedHours >= 8) {
+                // Payable days based on hours worked (after break deduction)
+                if (workedHours >= 8) {
                     totalPayableDays += 1;
-                } else if (cappedHours >= 4) {
+                } else if (workedHours >= 4) {
                     totalPayableDays += 0.5;
                 }
 
-                if (checkInTime.isAfter(lateThreshold)) lateCount++;
+                // Calculate late minutes (if check-in is after 7:30 AM)
+                if (checkInTime.isAfter(callTime)) {
+                    lateCount++;
+                    lateMinutes += Math.max(0, checkInTime.diff(callTime, 'minutes'));
+                }
+
+                // Overtime hours: anything beyond 8 hours worked (after break deduction)
+                overtimeHours += Math.max(0, workedHours - 8);
             });
 
             payrollSummary.push({
@@ -3965,6 +4265,8 @@ app.get('/api/payroll/calculate-all', async (req, res) => {
                 multiplier: uniqueDates.size,
                 payableDays: totalPayableDays,
                 totalWorkHours: parseFloat(totalWorkHours.toFixed(2)),
+                overtimeHours: parseFloat(overtimeHours.toFixed(2)),
+                lateMinutes: lateMinutes,
                 totalLates: lateCount
             });
         }

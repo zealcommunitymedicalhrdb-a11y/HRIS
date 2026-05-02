@@ -4109,7 +4109,7 @@ function renderTablePage() {
     const endIndex = startIndex + rowsPerPage;
     const paginatedEmployees = activeList.slice(startIndex, endIndex);
 
-    let totals = { basic: 0, allowances: 0, tax: 0, sss: 0, philhealth: 0, pagibig: 0, loan: 0, deductions: 0, gross: 0, net: 0 };
+    let totals = { basic: 0, allowances: 0, overtime: 0, late: 0, sss: 0, philhealth: 0, pagibig: 0, loan: 0, deductions: 0, gross: 0, net: 0 };
 
     // --- RENDER INDIVIDUAL ROWS ---
     paginatedEmployees.forEach(emp => {
@@ -4121,23 +4121,92 @@ function renderTablePage() {
         };
 
         // Use the multiplier from API (actual days worked)
+        const currentMultiplier = stats.multiplier;
+
+        // Daily salary (base salary is already daily rate in the system)
+        const dailySalary = Number(emp.baseSalary || 0);
+        const hourlyRate = dailySalary / 8;
+        const minuteRate = hourlyRate / 60;
         
-        const currentMultiplier = stats.multiplier; 
+        // Standard full month for consistent allowance calculations
+        const WORKING_DAYS_PER_MONTH = 21.65;
         
-        // Use payableDays for salary (handles half-days correctly)
-        const totalBasic = Number(emp.baseSalary || 0) * stats.payableDays; 
-        const totalAllow = Number(emp.totalAllowances || 0);
-        const totalDeduct = Number(emp.totalDeductions || 0);
+        // Overtime calculation: hourly rate × overtime hours (NO 1.5x multiplier)
+        const overtimeHours = Number(stats.overtimeHours || 0);
+        const overtimePay = Number(emp.overtimePay || 0) > 0
+            ? Number(emp.overtimePay || 0)
+            : Math.round(overtimeHours * hourlyRate * 100) / 100;
+
+        // Late deduction calculation: minute rate × late minutes
+        const lateMinutesData = Number(stats.lateMinutes || 0);
+        const lateDefault = Math.round(lateMinutesData * minuteRate * 100) / 100;
+        const lateValue = Number(emp.late) > 0 ? Number(emp.late) : lateDefault;
+
+        // ALLOWANCES - Based on PAYABLE DAYS (prorated for the selected period)
+        let housingValue = 0, travelValue = 0, mealValue = 0, hazardValue = 0;
+        
+        if (stats.payableDays > 0) {
+            // Housing: 10% of daily salary × payable days
+            const housingAuto = Math.round(dailySalary * 0.10 * stats.payableDays * 100) / 100;
+            housingValue = Number(emp.housing) > 0 ? Number(emp.housing) : housingAuto;
+            
+            // Travel: 100/day × payable days
+            const travelAuto = Math.round(100 * stats.payableDays * 100) / 100;
+            travelValue = Number(emp.travel) > 0 ? Number(emp.travel) : travelAuto;
+            
+            // Meal: 80/day × payable days
+            const mealAuto = Math.round(80 * stats.payableDays * 100) / 100;
+            mealValue = Number(emp.meal) > 0 ? Number(emp.meal) : mealAuto;
+            
+            // Hazard Pay: 25% of daily salary × payable days
+            const hazardAuto = Math.round(dailySalary * 0.25 * stats.payableDays * 100) / 100;
+            hazardValue = Number(emp.hazardPay) > 0 ? Number(emp.hazardPay) : hazardAuto;
+        }
+
+        const totalAllow = housingValue + travelValue + mealValue + hazardValue + overtimePay;
+
+        // DEDUCTIONS - Based on monthly rates, PRORATED by payable days
+        // Calculate monthly salary for deduction purposes
+        const weeklySalary = dailySalary * 4; // 4 days per week
+        const monthlyBaseSalary = weeklySalary * 4.33; // 4.33 weeks per month
+        
+        // Proration factor: payable days out of typical 21.65 working days per month (4.33 weeks × 5 days)
+        const prorateMultiplier = stats.payableDays / WORKING_DAYS_PER_MONTH;
+
+        // PhilHealth: 5% of monthly salary ÷ 2 (employee share), prorated by payable days
+        const monthlyPhilhealth = Math.round((monthlyBaseSalary * 0.05 / 2) * 100) / 100;
+        const philhealthDefault = Math.round(monthlyPhilhealth * prorateMultiplier * 100) / 100;
+        const philhealthValue = Number(emp.philhealth) > 0 ? Number(emp.philhealth) : philhealthDefault;
+
+        // SSS: Based on salary bracket (approx 4.5%), prorated by payable days
+        const monthlySss = Math.round((monthlyBaseSalary * 0.045) * 100) / 100;
+        const sssDefault = Math.round(monthlySss * prorateMultiplier * 100) / 100;
+        const sssValue = Number(emp.sss) > 0 ? Number(emp.sss) : sssDefault;
+
+        // Pag-IBIG: 2% up to 5000 salary cap, prorated by payable days
+        const monthlyPagibig = monthlyBaseSalary >= 5000 ? 100 : Math.round((monthlyBaseSalary * 0.02) * 100) / 100;
+        const pagibigDefault = Math.round(monthlyPagibig * prorateMultiplier * 100) / 100;
+        const pagibigValue = Number(emp.pagibig) > 0 ? Number(emp.pagibig) : pagibigDefault;
+
+        // Loan payment (auto-deducted from approved loans)
+        const loanPayment = Number(emp.loanMonthlyPayment || 0);
+
+        const totalDeduct = lateValue + philhealthValue + sssValue + pagibigValue + loanPayment;
+        
+        // Basic pay for the period
+        const totalBasic = dailySalary * stats.payableDays;
         const grossPay = totalBasic + totalAllow;
         const netPay = grossPay - totalDeduct;
 
         // Update Totals for the footer
         totals.basic += totalBasic;
         totals.allowances += totalAllow;
-        totals.tax += Number(emp.tax || 0);
-        totals.sss += Number(emp.sss || 0);
-        totals.philhealth += Number(emp.philhealth || 0);
-        totals.pagibig += Number(emp.pagibig || 0);
+        totals.overtime += overtimePay;
+        totals.late += lateValue;
+        totals.sss += sssValue;
+        totals.philhealth += philhealthValue;
+        totals.pagibig += pagibigValue;
+        totals.loan += loanPayment;
         totals.deductions += totalDeduct;
         totals.gross += grossPay;
         totals.net += netPay;
@@ -4174,39 +4243,27 @@ function renderTablePage() {
             <tr class="border-b border-gray-200 hover:bg-gray-50">
                 <td class="px-4 py-4">${avatarHTML}</td>
                 <td class="px-4 py-4 text-sm text-gray-700">${emp.position}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.housing || 0).toLocaleString()}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.travel || 0).toLocaleString()}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.meal || 0).toLocaleString()}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.hazardPay || 0).toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${housingValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${travelValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${mealValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${hazardValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${overtimePay.toLocaleString()}</td>
                 <td class="px-4 py-4">
-                    <button onclick="openEditAllowancesModal('${emp.fullName}', '${emp.employeeId}', '${emp.position}', ${emp.housing || 0}, ${emp.travel || 0}, ${emp.meal || 0}, ${emp.hazardPay || 0})" class="text-[#003D7A] hover:text-[#0052A3]"><i class="fas fa-edit"></i></button>
+                    <button onclick="openEditAllowancesModal('${emp.fullName}', '${emp.employeeId}', '${emp.position}', ${housingValue}, ${travelValue}, ${mealValue}, ${hazardValue})" class="text-[#003D7A] hover:text-[#0052A3]"><i class="fas fa-edit"></i></button>
                 </td>
             </tr>`);
 
-        const loanPayment = Number(emp.loanMonthlyPayment || 0);
-
-        // Update Totals for the footer
-        totals.basic += totalBasic;
-        totals.allowances += totalAllow;
-        totals.tax += Number(emp.tax || 0);
-        totals.sss += Number(emp.sss || 0);
-        totals.philhealth += Number(emp.philhealth || 0);
-        totals.pagibig += Number(emp.pagibig || 0);
-        totals.loan += loanPayment;
-        totals.deductions += totalDeduct;
-        totals.gross += grossPay;
-        totals.net += netPay;
         deductionsBody.insertAdjacentHTML('beforeend', `
             <tr class="border-b border-gray-200 hover:bg-gray-50">
                 <td class="px-4 py-4">${avatarHTML}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.tax || 0).toLocaleString()}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.philhealth || 0).toLocaleString()}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.sss || 0).toLocaleString()}</td>
-                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${Number(emp.pagibig || 0).toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${lateValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${philhealthValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${sssValue.toLocaleString()}</td>
+                <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${pagibigValue.toLocaleString()}</td>
                 <td class="px-4 py-4 text-sm font-medium text-gray-900">₱${loanPayment.toLocaleString()}</td>
                 <td class="px-4 py-4 text-sm font-bold text-red-500">₱${totalDeduct.toLocaleString()}</td>
                 <td class="px-4 py-4">
-                    <button onclick="openEditDeductionsModal('${emp.fullName}', '${emp.employeeId}', ${emp.tax || 0}, ${emp.philhealth || 0}, ${emp.sss || 0}, ${emp.pagibig || 0})" class="text-[#003D7A] hover:text-[#0052A3]"><i class="fas fa-edit"></i></button>
+                    <button onclick="openEditDeductionsModal('${emp.fullName}', '${emp.employeeId}', ${lateValue}, ${philhealthValue}, ${sssValue}, ${pagibigValue})" class="text-[#003D7A] hover:text-[#0052A3]"><i class="fas fa-edit"></i></button>
                 </td>
             </tr>`);
 
@@ -4216,10 +4273,11 @@ function renderTablePage() {
                 <td class="px-4 py-3">${avatarHTML}</td>
                 <td class="px-4 py-3 text-right font-semibold">₱${totalBasic.toLocaleString()}</td>
                 <td class="px-4 py-3 text-right text-green-600">+₱${totalAllow.toLocaleString()}</td>
-                <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.tax || 0).toLocaleString()}</td>
-                <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.sss || 0).toLocaleString()}</td>
-                <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.philhealth || 0).toLocaleString()}</td>
-                <td class="px-4 py-3 text-right text-red-600">-₱${Number(emp.pagibig || 0).toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-green-600">+₱${overtimePay.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-red-600">-₱${lateValue.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-red-600">-₱${sssValue.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-red-600">-₱${philhealthValue.toLocaleString()}</td>
+                <td class="px-4 py-3 text-right text-red-600">-₱${pagibigValue.toLocaleString()}</td>
                 <td class="px-4 py-3 text-right text-red-600">-₱${loanPayment.toLocaleString()}</td>
                 <td class="px-4 py-3 text-right font-bold text-red-600">-₱${totalDeduct.toLocaleString()}</td>
                 <td class="px-4 py-3 text-right font-semibold">₱${grossPay.toLocaleString()}</td>
@@ -4233,7 +4291,8 @@ function renderTablePage() {
             <td class="px-4 py-3">Totals</td>
             <td class="px-4 py-3 text-right">₱${totals.basic.toLocaleString()}</td>
             <td class="px-4 py-3 text-right text-green-300">+₱${totals.allowances.toLocaleString()}</td>
-            <td class="px-4 py-3 text-right">-₱${totals.tax.toLocaleString()}</td>
+            <td class="px-4 py-3 text-right text-green-300">+₱${totals.overtime.toLocaleString()}</td>
+            <td class="px-4 py-3 text-right">-₱${totals.late.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">-₱${totals.sss.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">-₱${totals.philhealth.toLocaleString()}</td>
             <td class="px-4 py-3 text-right">-₱${totals.pagibig.toLocaleString()}</td>
@@ -4457,10 +4516,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-window.openEditDeductionsModal = function(name, id, tax, philhealth, sss, pagibig) {
+window.openEditDeductionsModal = function(name, id, late, philhealth, sss, pagibig) {
     document.getElementById('deductEmployeeName').textContent = name;
     document.getElementById('deductEmployeeId').textContent = id;
-    document.getElementById('input-tax').value = tax;
+    document.getElementById('input-late').value = late;
     document.getElementById('input-philhealth').value = philhealth;
     document.getElementById('input-sss').value = sss;
     document.getElementById('input-pagibig').value = pagibig;
@@ -4477,7 +4536,7 @@ window.closeDeductionsModal = function() {
 window.saveDeductions = async function() {
     const payload = {
         employeeId: document.getElementById('deductEmployeeId').textContent,
-        tax: parseFloat(document.getElementById('input-tax').value) || 0,
+        late: parseFloat(document.getElementById('input-late').value) || 0,
         philhealth: parseFloat(document.getElementById('input-philhealth').value) || 0,
         sss: parseFloat(document.getElementById('input-sss').value) || 0,
         pagibig: parseFloat(document.getElementById('input-pagibig').value) || 0
@@ -4511,7 +4570,7 @@ window.saveDeductions = async function() {
     }
 };
 
-window.saveEntirePayroll = async function() {
+window.saveEntirePayroll = async function(event) {
     const payrollMonth = document.getElementById('payroll-month').value;
     const payrollPeriod = document.getElementById('payroll-period').value;
     const saveBtn = event.currentTarget;
@@ -4525,76 +4584,63 @@ window.saveEntirePayroll = async function() {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
-    await loadPayrollData();
-
-    if (!payrollStats || payrollStats.length === 0) {
-        alert("Please calculate payroll for the selected month and period before saving.");
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalContent;
-        return;
-    }
-
-    const payload = {
-        month: payrollMonth,
-        period: payrollPeriod,
-        payrollRecords: allEmployees.map(emp => {
-            const stats = payrollStats.find(s => s.empId === emp.employeeId) || { payableDays: 0, multiplier: 0 };
-            const totalBasic = Number(emp.baseSalary || 0) * stats.payableDays;
-            const totalAllow = Number(emp.totalAllowances || 0);
-            const totalDeduct = Number(emp.totalDeductions || 0);
-
-            return {
-                employeeId: emp.employeeId,
-                fullName: emp.fullName,
-                position: emp.position,
-                contractType: emp.contractType,
-                profilePic: emp.profilePic,
-                baseSalary: totalBasic,
-                allowances: totalAllow,
-                deductions: totalDeduct,
-                netPay: (totalBasic + totalAllow) - totalDeduct,
-                payableDays: stats.payableDays,
-                shiftDays: stats.multiplier,
-                breakdown: {
-                    tax: Number(emp.tax || 0),
-                    sss: Number(emp.sss || 0),
-                    philhealth: Number(emp.philhealth || 0),
-                    pagibig: Number(emp.pagibig || 0),
-                    housing: Number(emp.housing || 0),
-                    travel: Number(emp.travel || 0),
-                    meal: Number(emp.meal || 0),
-                    hazardPay: Number(emp.hazardPay || 0)
-                }
-            };
-        })
-    };
-
     try {
-        const response = await fetch('/api/payroll/save-period', {
+        await loadPayrollData();
+
+        if (!payrollStats || payrollStats.length === 0) {
+            alert("Please calculate payroll for the selected month and period before saving.");
+            return;
+        }
+
+        const payload = {
+            month: payrollMonth,
+            period: payrollPeriod,
+            payrollRecords: allEmployees.map(emp => {
+                const stats = payrollStats.find(s => s.empId === emp.employeeId) || { payableDays: 0, multiplier: 0, overtimeHours: 0, lateMinutes: 0 };
+                const payroll = calculatePayrollTotals(emp, stats);
+
+                return {
+                    employeeId: emp.employeeId,
+                    fullName: emp.fullName,
+                    position: emp.position,
+                    contractType: emp.contractType,
+                    profilePic: emp.profilePic,
+                    baseSalary: payroll.totalBasic,
+                    allowances: payroll.totalAllow,
+                    deductions: payroll.totalDeduct,
+                    netPay: payroll.netPay,
+                    payableDays: stats.payableDays,
+                    shiftDays: stats.multiplier,
+                    breakdown: {
+                        late: payroll.lateValue
+                    }
+                };
+            })
+        };
+
+        // Logic for the API call
+        const response = await fetch('/api/save-payroll', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         const result = await response.json();
-        if (result.success) {
-            alert(`Payroll for ${payrollMonth} (${payrollPeriod}) saved!`);
 
-            // --- ADD THIS BLOCK ---
-            
-// Payroll notification
-await triggerNotification(
-    'Payroll Finalized',
-    `Monthly payroll for ${payrollMonth} (${payrollPeriod}) has been saved to the database.`,
-    'PAYROLL',
-    `/admin/payroll.html#${payrollMonth}-${payrollPeriod}` // link to that payroll period
-);
-            // ----------------------
-            
+        if (response.ok) {
+            // Trigger notification ONCE after successful save
+            await triggerNotification(
+                'Payroll Finalized',
+                `Monthly payroll for ${payrollMonth} (${payrollPeriod}) has been saved to the database.`,
+                'PAYROLL',
+                `/admin/payroll.html#${payrollMonth}-${payrollPeriod}`
+            );
+            alert("Payroll saved successfully!");
         } else {
-            alert("Error: " + result.message);
+            alert("Error: " + (result.message || "Unknown error"));
         }
     } catch (err) {
+        console.error(err);
         alert("Failed to connect to the server.");
     } finally {
         saveBtn.disabled = false;
@@ -4620,7 +4666,7 @@ window.loadSavedPayroll = async function() {
                 baseSalary: rec.baseSalary / 14, 
                 totalAllowances: rec.allowances,
                 totalDeductions: rec.deductions,
-                tax: rec.breakdown.tax,
+                late: rec.breakdown.late ?? rec.breakdown.tax,
                 sss: rec.breakdown.sss,
                 philhealth: rec.breakdown.philhealth,
                 pagibig: rec.breakdown.pagibig,
@@ -4654,14 +4700,6 @@ window.resetToLivePayroll = async function() {
 // 1. Open Modal and Sync Date
 window.openPayslipModal = async function() {
     const modal = document.getElementById('payslipModal');
-    
-    // Sync the date from your main payroll filter
-    const mainMonthInput = document.getElementById('payroll-month');
-    const modalMonthInput = document.getElementById('modal-payroll-month');
-    if (mainMonthInput && modalMonthInput) {
-        modalMonthInput.value = mainMonthInput.value;
-    }
-
     modal.classList.remove('hidden');
     // Pre-load employee list for the "Selected" option
     await fetchEmployeeListForModal();
@@ -4716,12 +4754,19 @@ window.toggleEmployeeList = function() {
 // 4. Updated Generate Function with Real Filtering
 window.generatePayslips = async function() {
     const format = document.querySelector('input[name="format"]:checked').value;
-    const monthInput = document.getElementById('modal-payroll-month').value;
-    const periodInput = document.getElementById('modal-payroll-period').value; // Get the 1-15 or 16-end value
+    const monthInput = document.getElementById('payroll-month')?.value || '';
+    const periodInput = document.getElementById('payroll-period')?.value || '';
+    const startDateValue = document.getElementById('startDate')?.value || '';
+    const endDateValue = document.getElementById('endDate')?.value || '';
     const genType = document.getElementById('generate-for-type').value;
 
-    if (!monthInput) {
+    if (!monthInput && periodInput !== 'custom') {
         alert("Please select a payroll month.");
+        return;
+    }
+
+    if (periodInput === 'custom' && (!startDateValue || !endDateValue)) {
+        alert("Please select the payroll start and end dates.");
         return;
     }
 
@@ -4731,7 +4776,7 @@ window.generatePayslips = async function() {
     }
 
     // Generate the actual date range string (e.g., "March 16 - 31, 2026")
-    const dateRangeLabel = getPayrollDateRange(monthInput, periodInput);
+    const dateRangeLabel = getPayrollDateRange(monthInput, periodInput, startDateValue, endDateValue);
 
     // Filter Stats based on selection
     let statsToProcess = [];
@@ -4754,7 +4799,7 @@ window.generatePayslips = async function() {
     setTimeout(async () => {
         // Updated condition to include 'email'
         if (format === 'individual' || format === 'combined' || format === 'email') {
-            await createActualPDF(format, dateRangeLabel, monthInput, periodInput, statsToProcess);
+            await createActualPDF(format, dateRangeLabel, monthInput, periodInput, statsToProcess, startDateValue, endDateValue);
         } else if (format === 'excel') {
             downloadExcel(dateRangeLabel, statsToProcess);
         }
@@ -4764,16 +4809,373 @@ window.generatePayslips = async function() {
     }, 1500);
 };
 
+function calculatePayrollTotals(emp, stats) {
+    const dailySalary = Number(emp.baseSalary || 0);
+    const totalBasic = dailySalary * stats.payableDays;
+    const hourlyRate = dailySalary / 8;
+    const minuteRate = hourlyRate / 60;
+    const overtimeHours = Number(stats.overtimeHours || 0);
+    const overtimePay = Number(emp.overtimePay || 0) > 0
+        ? Number(emp.overtimePay || 0)
+        : Math.round(overtimeHours * hourlyRate * 100) / 100;
+    const lateMinutesData = Number(stats.lateMinutes || 0);
+    const lateDefault = Math.round(lateMinutesData * minuteRate * 100) / 100;
+    const lateValue = Number(emp.late) > 0 ? Number(emp.late) : lateDefault;
+
+    let housingValue = 0, travelValue = 0, mealValue = 0, hazardValue = 0;
+    if (stats.payableDays > 0) {
+        const housingAuto = Math.round(dailySalary * 0.10 * stats.payableDays * 100) / 100;
+        housingValue = Number(emp.housing) > 0 ? Number(emp.housing) : housingAuto;
+
+        const travelAuto = Math.round(100 * stats.payableDays * 100) / 100;
+        travelValue = Number(emp.travel) > 0 ? Number(emp.travel) : travelAuto;
+
+        const mealAuto = Math.round(80 * stats.payableDays * 100) / 100;
+        mealValue = Number(emp.meal) > 0 ? Number(emp.meal) : mealAuto;
+
+        const hazardAuto = Math.round(dailySalary * 0.25 * stats.payableDays * 100) / 100;
+        hazardValue = Number(emp.hazardPay) > 0 ? Number(emp.hazardPay) : hazardAuto;
+    }
+
+    const totalAllow = housingValue + travelValue + mealValue + hazardValue + overtimePay;
+    const weeklySalary = dailySalary * 4;
+    const monthlyBaseSalary = weeklySalary * 4.33;
+    const WORKING_DAYS_PER_MONTH = 21.65;
+    const prorateMultiplier = stats.payableDays / WORKING_DAYS_PER_MONTH;
+
+    const monthlyPhilhealth = Math.round((monthlyBaseSalary * 0.05 / 2) * 100) / 100;
+    const philhealthDefault = Math.round(monthlyPhilhealth * prorateMultiplier * 100) / 100;
+    const philhealthValue = Number(emp.philhealth) > 0 ? Number(emp.philhealth) : philhealthDefault;
+    const monthlySss = Math.round((monthlyBaseSalary * 0.045) * 100) / 100;
+    const sssDefault = Math.round(monthlySss * prorateMultiplier * 100) / 100;
+    const sssValue = Number(emp.sss) > 0 ? Number(emp.sss) : sssDefault;
+    const monthlyPagibig = monthlyBaseSalary >= 5000 ? 100 : Math.round((monthlyBaseSalary * 0.02) * 100) / 100;
+    const pagibigDefault = Math.round(monthlyPagibig * prorateMultiplier * 100) / 100;
+    const pagibigValue = Number(emp.pagibig) > 0 ? Number(emp.pagibig) : pagibigDefault;
+    const loanPayment = Number(emp.loanMonthlyPayment || 0);
+
+    const totalDeduct = lateValue + philhealthValue + sssValue + pagibigValue + loanPayment;
+    const grossPay = totalBasic + totalAllow;
+    const netPay = grossPay - totalDeduct;
+
+    return {
+        dailySalary,
+        totalBasic,
+        hourlyRate,
+        minuteRate,
+        overtimeHours,
+        overtimePay,
+        lateValue,
+        housingValue,
+        travelValue,
+        mealValue,
+        hazardValue,
+        totalAllow,
+        weeklySalary,
+        monthlyBaseSalary,
+        prorateMultiplier,
+        philhealthValue,
+        sssValue,
+        pagibigValue,
+        loanPayment,
+        totalDeduct,
+        grossPay,
+        netPay
+    };
+}
+
+// Generate all payslips for accounting - PDF landscape format
+window.generatePayslipsForAccounting = async function() {
+    if (payrollStats.length === 0) {
+        alert("Please calculate payroll data first.");
+        return;
+    }
+
+    try {
+        // Get current date range from inputs
+        const startElement = document.getElementById('startDate');
+        const endElement = document.getElementById('endDate');
+        
+        if (!startElement || !endElement || !startElement.value || !endElement.value) {
+            alert("Please set payroll dates first.");
+            return;
+        }
+
+        const startDate = startElement.value;
+        const endDate = endElement.value;
+        const formatDate = (value) => {
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleDateString('en-GB');
+        };
+        const dateRange = `${formatDate(startDate)} to ${formatDate(endDate)}`;
+
+        const formatCurrency = (value) => {
+            return 'P ' + Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        };
+
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+        const preparedBy = loggedInUser.fullName || loggedInUser.name || 'Admin User';
+        const reviewedBy = await getAccountingAdminName();
+        const approvedBy = 'Helen Zulueta';
+
+        // Show loader
+        const loader = document.getElementById('generatingPayslipsModal');
+        if(loader) loader.classList.remove('hidden');
+
+        setTimeout(async () => {
+            try {
+                // Calculate payroll data
+                const payrollData = allEmployees.map(emp => {
+                    const stats = payrollStats.find(s => s.empId === emp.employeeId) || {
+                        payableDays: 0,
+                        totalWorkHours: 0,
+                        overtimeHours: 0,
+                        lateMinutes: 0
+                    };
+                    const payroll = calculatePayrollTotals(emp, stats);
+
+                    return {
+                        id: emp.employeeId,
+                        name: emp.fullName,
+                        basic: payroll.totalBasic,
+                        ot: payroll.overtimePay,
+                        housing: payroll.housingValue,
+                        travel: payroll.travelValue,
+                        meal: payroll.mealValue,
+                        hazard: payroll.hazardValue,
+                        allowances: payroll.totalAllow,
+                        gross: payroll.grossPay,
+                        late: payroll.lateValue,
+                        sss: payroll.sssValue,
+                        philhealth: payroll.philhealthValue,
+                        pagibig: payroll.pagibigValue,
+                        netPay: payroll.netPay
+                    };
+                });
+
+                // Calculate totals
+                const totals = payrollData.reduce((acc, row) => ({
+                    basic: acc.basic + row.basic,
+                    ot: acc.ot + row.ot,
+                    housing: acc.housing + row.housing,
+                    travel: acc.travel + row.travel,
+                    meal: acc.meal + row.meal,
+                    hazard: acc.hazard + row.hazard,
+                    allowances: acc.allowances + row.allowances,
+                    gross: acc.gross + row.gross,
+                    late: acc.late + row.late,
+                    sss: acc.sss + row.sss,
+                    philhealth: acc.philhealth + row.philhealth,
+                    pagibig: acc.pagibig + row.pagibig,
+                    netPay: acc.netPay + row.netPay
+                }), { basic: 0, ot: 0, housing: 0, travel: 0, meal: 0, hazard: 0, allowances: 0, gross: 0, late: 0, sss: 0, philhealth: 0, pagibig: 0, netPay: 0 });
+
+                // Create PDF in landscape
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('l', 'mm', 'legal'); // landscape
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                let yPosition = 15;
+
+                async function getImageDataUrl(imagePath) {
+                    try {
+                        const response = await fetch(imagePath);
+                        const blob = await response.blob();
+                        return await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+                    } catch (error) {
+                        return null;
+                    }
+                }
+
+                const logoDataUrl = await getImageDataUrl('./images/logo.jpg');
+                if (logoDataUrl) {
+                    const logoWidth = 26;
+                    const logoHeight = 26;
+                    doc.addImage(logoDataUrl, 'JPEG', pageWidth / 2 - logoWidth / 2, yPosition, logoWidth, logoHeight);
+                    yPosition += logoHeight + 4;
+                }
+
+                // Add header - Company info
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.text('Zeal Community Medical Mission', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 6;
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'normal');
+                doc.text('Payatas A, 221 Upper Jasmim St, Quezon City, Metro Manila', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 8;
+
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('MONTHLY PAYROLL REPORT', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 8;
+
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                doc.text(`Period: ${dateRange}`, pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 6;
+                doc.text(`Report Generated: ${formatDate(new Date())}`, pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 10;
+
+                // Create table with columns: ID, Name, Basic, OT, Housing, Travel, Meal, Hazard, Allowances, Gross, Late, SSS, PHILHealth, PAGIBIG, Net Pay
+                const tableData = [
+                    ['ID', 'Name', 'Basic', 'OT', 'Housing', 'Travel', 'Meal', 'Hazard', 'Allowances', 'Gross', 'Late', 'SSS', 'PHILHealth', 'PAGIBIG', 'Net Pay'],
+                    ...payrollData.map(row => [
+                        row.id,
+                        row.name,
+                        formatCurrency(row.basic),
+                        formatCurrency(row.ot),
+                        formatCurrency(row.housing),
+                        formatCurrency(row.travel),
+                        formatCurrency(row.meal),
+                        formatCurrency(row.hazard),
+                        formatCurrency(row.allowances),
+                        formatCurrency(row.gross),
+                        formatCurrency(row.late),
+                        formatCurrency(row.sss),
+                        formatCurrency(row.philhealth),
+                        formatCurrency(row.pagibig),
+                        formatCurrency(row.netPay)
+                    ]),
+                    ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+                    ['TOTAL', '', 
+                        formatCurrency(totals.basic),
+                        formatCurrency(totals.ot),
+                        formatCurrency(totals.housing),
+                        formatCurrency(totals.travel),
+                        formatCurrency(totals.meal),
+                        formatCurrency(totals.hazard),
+                        formatCurrency(totals.allowances),
+                        formatCurrency(totals.gross),
+                        formatCurrency(totals.late),
+                        formatCurrency(totals.sss),
+                        formatCurrency(totals.philhealth),
+                        formatCurrency(totals.pagibig),
+                        formatCurrency(totals.netPay)
+                    ]
+                ];
+
+                // Add table
+                doc.autoTable({
+                    head: [tableData[0]],
+                    body: tableData.slice(1),
+                    startY: yPosition,
+                    margin: { left: 10, right: 10 },
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 3,
+                        halign: 'right',
+                        valign: 'middle'
+                    },
+                    headStyles: {
+                        fillColor: [0, 61, 122],
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        halign: 'center'
+                    },
+                    bodyStyles: {
+                        textColor: 40
+                    },
+                    alternateRowStyles: {
+                        fillColor: [245, 245, 245]
+                    },
+                    columnStyles: {
+                        0: { halign: 'left', cellWidth: 27 },
+                        1: { halign: 'left', cellWidth: 25 },
+                        2: { cellWidth: 22 },
+                        3: { cellWidth: 22 },
+                        4: { cellWidth: 22 },
+                        5: { cellWidth: 22 },
+                        6: { cellWidth: 22 },
+                        7: { cellWidth: 22 },
+                        8: { cellWidth: 22 },
+                        9: { cellWidth: 22 },
+                        10: { cellWidth: 20 },
+                        11: { cellWidth: 22 },
+                        12: { cellWidth: 22 },
+                        13: { cellWidth: 22 },
+                        14: { cellWidth: 22 }
+                    },
+                    didDrawPage: function(data) {
+                        // Footer
+                        const pageSize = doc.internal.pageSize;
+                        const pageHeight = pageSize.getHeight();
+                        doc.setFontSize(8);
+                        doc.setFont(undefined, 'normal');
+                        doc.text(`Page ${data.pageNumber} of ${data.pageCount}`, pageSize.getWidth() / 2, pageHeight - 10, { align: 'center' });
+                    }
+                });
+
+                // Add summary section
+                const finalY = doc.lastAutoTable.finalY + 10;
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'bold');
+                doc.text(`Total Gross Payroll: ${formatCurrency(totals.gross)}`, 15, finalY);
+                doc.text(`Total Allowances: ${formatCurrency(totals.allowances)}`, 15, finalY + 6);
+                doc.text(`Total Deductions: ${formatCurrency(totals.late + totals.sss + totals.philhealth + totals.pagibig)}`, 15, finalY + 12);
+                doc.text(`Total Net Pay: ${formatCurrency(totals.netPay)}`, 15, finalY + 18);
+
+                const signatureY = finalY + 40;
+                doc.setLineWidth(0.3);
+                doc.line(30, signatureY, 70, signatureY);
+                doc.line(90, signatureY, 130, signatureY);
+                doc.line(150, signatureY, 190, signatureY);
+
+                doc.setFontSize(9);
+                doc.text('Prepared By :', 30, signatureY - 4);
+                doc.text('Reviewed By :', 90, signatureY - 4);
+                doc.text('Approved By :', 150, signatureY - 4);
+                doc.setFontSize(8);
+                doc.text(preparedBy, 30, signatureY + 6);
+                doc.text(reviewedBy, 90, signatureY + 6);
+                doc.text(approvedBy, 150, signatureY + 6);
+                doc.text('Human Resources Head', 30, signatureY + 11);
+                doc.text('Accounting Head', 90, signatureY + 11);
+                doc.text('CEO/OWNER', 150, signatureY + 11);
+
+                // Save PDF
+                doc.save(`Monthly_Payroll_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+
+                if(loader) loader.classList.add('hidden');
+                alert(`✓ Generated PDF payroll report for ${allEmployees.length} employees.`);
+            } catch (error) {
+                if(loader) loader.classList.add('hidden');
+                console.error("Error generating accounting payslips:", error);
+                alert("Error generating payslips. Check console.");
+            }
+        }, 1500);
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Error processing request.");
+    }
+};
+
 window.closePayslipModal = () => document.getElementById('payslipModal').classList.add('hidden');
 
-function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, totalDeduct, totalNet) {
-    const [year, month] = monthValue.split('-');
-    const monthIndex = Number(month) - 1;
-    const monthName = new Date(year, monthIndex).toLocaleString('default', { month: 'long' });
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, totalDeduct, totalAllow, totalNet, customStartDate, customEndDate) {
+    const [year, month] = (monthValue || '').split('-');
+    const monthIndex = month ? Number(month) - 1 : 0;
+    const monthName = monthValue ? new Date(year, monthIndex).toLocaleString('default', { month: 'long' }) : '';
+    const daysInMonth = monthValue ? new Date(year, monthIndex + 1, 0).getDate() : 0;
     const rows = [];
+    const formatDate = value => {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-GB');
+    };
 
-    if (periodValue === '1-15') {
+    if (periodValue === 'custom' && customStartDate && customEndDate) {
+        rows.push([`${formatDate(customStartDate)} - ${formatDate(customEndDate)}`, `${totalHours} hours`, `PHP ${totalGross.toLocaleString()}`, `PHP ${totalDeduct.toLocaleString()}`, `PHP ${totalAllow.toLocaleString()}`, `PHP ${totalNet.toLocaleString()}`]);
+        return rows;
+    }
+
+    if (periodValue === '1-15' || periodValue === '15th') {
         const weekRanges = [
             { label: `${monthName} 1 - 7`, factor: 7 },
             { label: `${monthName} 8 - 14`, factor: 7 },
@@ -4783,6 +5185,7 @@ function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, t
         let remainingHours = totalHours;
         let remainingGross = totalGross;
         let remainingDeduct = totalDeduct;
+        let remainingAllow = totalAllow;
         let remainingNet = totalNet;
 
         weekRanges.forEach((week, index) => {
@@ -4791,18 +5194,20 @@ function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, t
             const hours = isLast ? remainingHours : Math.round(totalHours * share);
             const gross = isLast ? remainingGross : Math.round(totalGross * share);
             const deduct = isLast ? remainingDeduct : Math.round(totalDeduct * share);
+            const allow = isLast ? remainingAllow : Math.round(totalAllow * share);
             const net = isLast ? remainingNet : Math.round(totalNet * share);
 
             if (!isLast) {
                 remainingHours -= hours;
                 remainingGross -= gross;
                 remainingDeduct -= deduct;
+                remainingAllow -= allow;
                 remainingNet -= net;
             }
 
-            rows.push([week.label, `${hours} hours`, `PHP ${gross.toLocaleString()}`, `PHP ${deduct.toLocaleString()}`, `PHP ${net.toLocaleString()}`]);
+            rows.push([week.label, `${hours} hours`, `PHP ${gross.toLocaleString()}`, `PHP ${deduct.toLocaleString()}`, `PHP ${allow.toLocaleString()}`, `PHP ${net.toLocaleString()}`]);
         });
-    } else {
+    } else if (periodValue === '16-end' || periodValue === '30th') {
         const weekRanges = [
             { label: `${monthName} 16 - 22`, factor: 7 }
         ];
@@ -4815,6 +5220,7 @@ function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, t
         let remainingHours = totalHours;
         let remainingGross = totalGross;
         let remainingDeduct = totalDeduct;
+        let remainingAllow = totalAllow;
         let remainingNet = totalNet;
 
         weekRanges.forEach((week, index) => {
@@ -4823,25 +5229,44 @@ function buildPayslipWeekRows(monthValue, periodValue, totalHours, totalGross, t
             const hours = isLast ? remainingHours : Math.round(totalHours * share);
             const gross = isLast ? remainingGross : Math.round(totalGross * share);
             const deduct = isLast ? remainingDeduct : Math.round(totalDeduct * share);
+            const allow = isLast ? remainingAllow : Math.round(totalAllow * share);
             const net = isLast ? remainingNet : Math.round(totalNet * share);
 
             if (!isLast) {
                 remainingHours -= hours;
                 remainingGross -= gross;
                 remainingDeduct -= deduct;
+                remainingAllow -= allow;
                 remainingNet -= net;
             }
 
-            rows.push([week.label, `${hours} hours`, `PHP ${gross.toLocaleString()}`, `PHP ${deduct.toLocaleString()}`, `PHP ${net.toLocaleString()}`]);
+            rows.push([week.label, `${hours} hours`, `PHP ${gross.toLocaleString()}`, `PHP ${deduct.toLocaleString()}`, `PHP ${allow.toLocaleString()}`, `PHP ${net.toLocaleString()}`]);
         });
     }
 
     return rows;
 }
 
-async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, statsToProcess) {
+async function getAccountingAdminName() {
+    try {
+        const response = await fetch('/api/employees/list?role=accounting&limit=100');
+        if (!response.ok) return 'Accounting Admin';
+        const result = await response.json();
+        if (!result.employees || result.employees.length === 0) return 'Accounting Admin';
+
+        const adminRecord = result.employees.find(emp => emp.position && emp.position.toLowerCase().includes('admin'));
+        return adminRecord?.fullName || adminRecord?.employeeId || 'Accounting Admin';
+    } catch (error) {
+        console.warn('Failed to fetch accounting admin name:', error);
+        return 'Accounting Admin';
+    }
+}
+
+async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, statsToProcess, customStartDate, customEndDate) {
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
+    const reviewedBy = await getAccountingAdminName();
+    
     
     for (let index = 0; index < statsToProcess.length; index++) {
         const stat = statsToProcess[index];
@@ -4856,27 +5281,53 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
             doc = new jsPDF();
         }
 
-        const totalBasic = Number(emp.baseSalary || 0) * stat.payableDays;
-        const totalAllow = Number(emp.totalAllowances || 0);
-        const totalDeduct = Number(emp.totalDeductions || 0);
-        const totalGross = totalBasic + totalAllow;
-        const netPay = totalGross - totalDeduct;
-        const [year, month] = monthValue.split('-');
-        const monthName = new Date(year, Number(month) - 1).toLocaleString('default', { month: 'long' });
-        const payPeriodText = periodValue === '1-15' ? '1st - 15th' : '16th - End of Month';
+        const payroll = calculatePayrollTotals(emp, stat);
+        const totalBasic = payroll.totalBasic;
+        const hourlyRate = payroll.hourlyRate;
+        const minuteRate = payroll.minuteRate;
+        const overtimePay = payroll.overtimePay;
+        const lateValue = payroll.lateValue;
+        const totalAllow = payroll.totalAllow;
+        const totalDeduct = payroll.totalDeduct;
+        const totalGross = payroll.grossPay;
+        const netPay = payroll.netPay;
+        const salaryOrRate = `PHP ${payroll.dailySalary.toLocaleString()}`;
+        const [year, month] = (monthValue || '').split('-');
+        const monthName = monthValue ? new Date(year, Number(month) - 1).toLocaleString('default', { month: 'long' }) : '';
+        const payPeriodText = periodValue === '1-15' || periodValue === '15th'
+            ? '1st - 15th'
+            : periodValue === '16-end' || periodValue === '30th'
+                ? '16th - End of Month'
+                : (periodValue === 'custom' && customStartDate && customEndDate)
+                    ? `${new Date(customStartDate).toLocaleDateString('en-GB')} - ${new Date(customEndDate).toLocaleDateString('en-GB')}`
+                    : periodValue || 'Payroll Period';
         const compensationType = emp.contractType || 'Regular';
-        const salaryOrRate = `PHP ${Number(emp.baseSalary || 0).toLocaleString()}`;
 
         const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
         const preparedBy = loggedInUser.fullName || loggedInUser.name || 'Admin User';
         const totalHours = stat.totalWorkHours || 0;
-        const payableDate = periodValue === '1-15'
+        const formatDate = value => {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-GB');
+        };
+
+        const payableDate = periodValue === '1-15' || periodValue === '15th'
             ? `${monthName} 15, ${year}`
-            : `${monthName} ${new Date(year, Number(month), 0).getDate()}, ${year}`;
+            : periodValue === '16-end' || periodValue === '30th'
+                ? `${monthName} ${new Date(year, Number(month), 0).getDate()}, ${year}`
+                : customEndDate
+                    ? formatDate(customEndDate)
+                    : `${monthName} ${new Date(year, Number(month), 0).getDate()}, ${year}`;
 
         let attendanceRecords = [];
         try {
-            const attendanceRes = await fetch(`/api/attendance/employee/${emp.employeeId}?month=${monthValue}&period=${periodValue}`);
+            let attendanceUrl;
+            if (periodValue === 'custom' && customStartDate && customEndDate) {
+                attendanceUrl = `/api/attendance/employee/${emp.employeeId}?startDate=${encodeURIComponent(customStartDate)}&endDate=${encodeURIComponent(customEndDate)}`;
+            } else {
+                attendanceUrl = `/api/attendance/employee/${emp.employeeId}?month=${encodeURIComponent(monthValue)}&period=${encodeURIComponent(periodValue)}`;
+            }
+            const attendanceRes = await fetch(attendanceUrl);
             const attendanceData = await attendanceRes.json();
             attendanceRecords = attendanceData.attendance || [];
         } catch (error) {
@@ -4946,31 +5397,39 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.text(emp.fullName || 'N/A', leftBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
-        doc.text(`${monthName} ${year} (${payPeriodText})`, leftBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
+        const payPeriodLabel = periodValue === 'custom' && customStartDate && customEndDate
+            ? `${new Date(customStartDate).toLocaleDateString('en-GB')} - ${new Date(customEndDate).toLocaleDateString('en-GB')}`
+            : `${monthName} ${year} (${payPeriodText})`;
+        doc.text(payPeriodLabel, leftBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
         doc.text(compensationType, rightBoxX + labelWidth + 4, detailStartY + 11, { maxWidth: boxWidth - labelWidth - 8 });
         doc.text(salaryOrRate, rightBoxX + labelWidth + 4, detailStartY + 24, { maxWidth: boxWidth - labelWidth - 8 });
 
         doc.setFontSize(8);
         doc.text(`Payable Date : ${payableDate}`, 20, detailStartY + boxHeight + 18);
         doc.text(`Total Hours : ${totalHours} hours`, 20, detailStartY + boxHeight + 24);
+        doc.text(`Deductions : PHP ${totalDeduct.toLocaleString()}`, 20, detailStartY + boxHeight + 30);
         doc.text(`Allowances : PHP ${totalAllow.toLocaleString()}`, 110, detailStartY + boxHeight + 18);
-        doc.text(`Deductions : PHP ${totalDeduct.toLocaleString()}`, 110, detailStartY + boxHeight + 24);
+
+        const breakdownTitle = periodValue === 'custom' && customStartDate && customEndDate
+            ? `Payroll Breakdown (${new Date(customStartDate).toLocaleDateString('en-GB')} - ${new Date(customEndDate).toLocaleDateString('en-GB')})`
+            : `Payroll Breakdown (${monthName} ${year})`;
 
         doc.setFontSize(11);
         doc.setTextColor(0);
-        doc.text(`Payroll Breakdown ( ${monthName} ${year} )`, 20, detailStartY + boxHeight + 34);
+        doc.text(breakdownTitle, 20, detailStartY + boxHeight + 60);
 
-        const breakdownRows = buildPayslipWeekRows(monthValue, periodValue, stat.totalWorkHours || 0, totalGross, totalDeduct, netPay);
+        const breakdownRows = buildPayslipWeekRows(monthValue, periodValue, stat.totalWorkHours || 0, totalGross, totalDeduct, totalAllow, netPay, customStartDate, customEndDate);
 
         doc.autoTable({
-            startY: detailStartY + boxHeight + 44,
-            head: [['Week of :', 'Hours Worked :', 'Gross Pay :', 'Deductions ( taxes, etc )', 'Net Pay :']],
+            startY: detailStartY + boxHeight + 74,
+            head: [['Week of :', 'Hours Worked :', 'Deductions', 'Allowances','Gross Pay :', 'Net Pay :']],
             body: breakdownRows,
             foot: [[
                 'TOTAL',
                 `${stat.totalWorkHours || 0} hours`,
-                `PHP ${totalGross.toLocaleString()}`,
                 `PHP ${totalDeduct.toLocaleString()}`,
+                `PHP ${totalAllow.toLocaleString()}`,
+                `PHP ${totalGross.toLocaleString()}`,
                 `PHP ${netPay.toLocaleString()}`
             ]],
             headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
@@ -5004,6 +5463,50 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
             doc.text('No attendance records found for this period.', 20, attendanceStartY + 10);
         }
 
+        
+        const breakdownSectionStartY = doc.lastAutoTable.finalY + 12;
+        const allowanceRows = [
+            ['Housing Allowance', `PHP ${payroll.housingValue.toLocaleString()}`],
+            ['Travel Allowance', `PHP ${payroll.travelValue.toLocaleString()}`],
+            ['Meal Allowance', `PHP ${payroll.mealValue.toLocaleString()}`],
+            ['Hazard Pay', `PHP ${payroll.hazardValue.toLocaleString()}`],
+            ['Overtime Pay', `PHP ${overtimePay.toLocaleString() ? `PHP ${overtimePay.toLocaleString()}` : 'PHP 0'}`],
+            ['Total Allowances', `PHP ${totalAllow.toLocaleString()}`]
+        ];
+        const deductionRows = [
+            ['Late Deduction', `PHP ${lateValue.toLocaleString()}`],
+            ['SSS Contribution', `PHP ${payroll.sssValue.toLocaleString()}`],
+            ['PhilHealth Contribution', `PHP ${payroll.philhealthValue.toLocaleString()}`],
+            ['Pag-IBIG Contribution', `PHP ${payroll.pagibigValue.toLocaleString()}`],
+            ['Loan Payment', `PHP ${payroll.loanPayment.toLocaleString()}`],
+            ['Total Deductions', `PHP ${totalDeduct.toLocaleString()}`]
+        ];
+
+        doc.setFontSize(11);
+        doc.text('Allowances Breakdown', 20, breakdownSectionStartY);
+        doc.autoTable({
+            startY: breakdownSectionStartY + 6,
+            head: [['Allowance', 'Amount']],
+            body: allowanceRows,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+            styles: { fontSize: 8, cellPadding: 3 },
+            columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 } }
+        });
+
+        const deductionSectionStartY = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(11);
+        doc.text('Deductions Breakdown', 20, deductionSectionStartY);
+        doc.autoTable({
+            startY: deductionSectionStartY + 6,
+            head: [['Deduction', 'Amount']],
+            body: deductionRows,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 61, 122], textColor: [255, 255, 255] },
+            styles: { fontSize: 8, cellPadding: 3 },
+            columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 } }
+        });
+
         const summaryTableStartY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : attendanceStartY + 18;
         doc.setFontSize(11);
         doc.setTextColor(0);
@@ -5016,6 +5519,7 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
                 ['Basic Salary', `PHP ${totalBasic.toLocaleString()}`],
                 ['Allowances', `PHP ${totalAllow.toLocaleString()}`],
                 ['Deductions', `PHP ${totalDeduct.toLocaleString()}`],
+                ['Gross Pay', `PHP ${totalGross.toLocaleString()}`],
                 ['Net Pay', `PHP ${netPay.toLocaleString()}`]
             ],
             styles: { fontSize: 8, cellPadding: 3 },
@@ -5029,8 +5533,8 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
         doc.setFontSize(8);
         const notes = [
             '• Gross Pay: Total before any deductions.',
-            '• Deductions: Includes estimated taxes (Social Security, PhilHealth, Income Taxes, etc).',
-            '• Net Pay: Final amount after deduction.'
+            '• Deductions: Includes late deductions, social contributions, and loan repayments.',
+            '• Net Pay: Final amount after deductions.'
         ];
         notes.forEach((line, index) => {
             doc.text(line, 24, notesStartY + 5 + (index * 4));
@@ -5038,17 +5542,24 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
 
         const signatureY = notesStartY + 26;
         doc.setLineWidth(0.3);
-        doc.line(30, signatureY, 90, signatureY);
-        doc.line(120, signatureY, 180, signatureY);
-
+        doc.line(30, signatureY, 70, signatureY);
+        doc.line(90, signatureY, 130, signatureY);
+        doc.line(150, signatureY, 190, signatureY);
+      
         doc.setFontSize(9);
         doc.text('Prepared By :', 30, signatureY - 4);
-        doc.text('Approved By :', 120, signatureY - 4);
+        doc.text('Reviewed By :', 90, signatureY - 4);
+        doc.text('Received By :', 150, signatureY - 4);
+        
         doc.setFontSize(8);
         doc.text(preparedBy, 30, signatureY + 6);
-        doc.text('Manager', 120, signatureY + 6);
+        doc.text(reviewedBy, 90, signatureY + 6);
+        doc.text(emp.fullName || 'N/A', 150, signatureY + 6);
+
         doc.text('HR Payroll Department', 30, signatureY + 11);
-        doc.text('Manager', 120, signatureY + 11);
+        doc.text('Accounting Admin', 90, signatureY + 11);
+        doc.text('Employee', 150, signatureY + 11);
+       
 
         doc.setFontSize(7);
         doc.text('For any question or concern, contact HR and the payroll team at hrzealcommunity@gmail.com', 20, signatureY + 22, { maxWidth: 170 });
@@ -5085,15 +5596,24 @@ async function createActualPDF(format, dateRangeLabel, monthValue, periodValue, 
     }
 }
 
-function getPayrollDateRange(monthValue, periodValue) {
-    const [year, month] = monthValue.split('-');
-    const date = new Date(year, month - 1);
+function getPayrollDateRange(monthValue, periodValue, customStartDate, customEndDate) {
+    const formatDate = value => {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-GB');
+    };
+
+    if (periodValue === 'custom' && customStartDate && customEndDate) {
+        return `${formatDate(customStartDate)} - ${formatDate(customEndDate)}`;
+    }
+
+    const [year, month] = (monthValue || '').split('-');
+    const date = new Date(year, Number(month) - 1);
     const monthName = date.toLocaleString('default', { month: 'long' });
 
-    if (periodValue === "1-15") {
+    if (periodValue === '1-15' || periodValue === '15th') {
         return `${monthName} 1 - 15, ${year}`;
     } else {
-        const lastDay = new Date(year, month, 0).getDate();
+        const lastDay = new Date(year, Number(month), 0).getDate();
         return `${monthName} 16 - ${lastDay}, ${year}`;
     }
 }
@@ -5101,19 +5621,19 @@ function getPayrollDateRange(monthValue, periodValue) {
 window.downloadExcel = function(dateRangeLabel, statsToProcess) {
     const dataToExport = statsToProcess.map(stat => {
         const emp = allEmployees.find(e => e.employeeId === stat.empId);
-        
-        // Match PDF calculations exactly
-        const totalBasic = Number(emp?.baseSalary || 0) * stat.payableDays;
-        const totalAllowances = Number(emp?.totalAllowances || 0);
-        
-        // Individual Deductions
-        const tax = Number(emp?.tax || 0);
-        const sss = Number(emp?.sss || 0);
-        const philhealth = Number(emp?.philhealth || 0);
-        const pagibig = Number(emp?.pagibig || 0);
-        
-        const totalDeductions = Number(emp?.totalDeductions || 0);
-        const netPay = (totalBasic + totalAllowances) - totalDeductions;
+        const payroll = emp ? calculatePayrollTotals(emp, stat) : {
+            dailySalary: 0,
+            totalBasic: 0,
+            totalAllow: 0,
+            lateValue: 0,
+            philhealthValue: 0,
+            sssValue: 0,
+            pagibigValue: 0,
+            loanPayment: 0,
+            totalDeduct: 0,
+            grossPay: 0,
+            netPay: 0
+        };
 
         return {
             "Employee ID": emp?.employeeId || stat.empId,
@@ -5123,18 +5643,19 @@ window.downloadExcel = function(dateRangeLabel, statsToProcess) {
             "Total Work Hours": stat.totalWorkHours,
             "Total Lates": stat.totalLates,
             // Earnings breakdown
-            "Daily Rate": Number(emp?.baseSalary || 0),
-            "Total Basic Pay": totalBasic,
-            "Allowances": totalAllowances,
-            "Gross Pay": (totalBasic + totalAllowances),
+            "Daily Rate": payroll.dailySalary,
+            "Total Basic Pay": payroll.totalBasic,
+            "Allowances": payroll.totalAllow,
+            "Gross Pay": payroll.grossPay,
             // Deductions breakdown (Mirrors the PDF Financials Table)
-            "Withholding Tax": tax,
-            "SSS Contribution": sss,
-            "PhilHealth": philhealth,
-            "Pag-IBIG": pagibig,
-            "Total Deductions": totalDeductions,
+            "Late Deduction": payroll.lateValue.toFixed(2),
+            "SSS Contribution": payroll.sssValue.toFixed(2),
+            "PhilHealth": payroll.philhealthValue.toFixed(2),
+            "Pag-IBIG": payroll.pagibigValue.toFixed(2),
+            "Loan Deduction": payroll.loanPayment.toFixed(2),
+            "Total Deductions": payroll.totalDeduct.toFixed(2),
             // Final
-            "NET PAY": netPay,
+            "NET PAY": payroll.netPay.toFixed(2),
             "Payroll Period": dateRangeLabel
         };
     });

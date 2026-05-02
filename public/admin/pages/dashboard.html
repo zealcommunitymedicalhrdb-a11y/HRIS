@@ -26,7 +26,7 @@
             <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 flex-1 text-center sm:text-left">
                 <div class="relative">
                     <div class="w-24 h-24 rounded-full bg-white p-1 shadow-lg overflow-hidden">
-                        <img id="dashboardEmployeeAvatar" src="" alt="Employee avatar" class="hidden w-full h-full rounded-full object-cover" onerror="this.classList.add('hidden'); document.getElementById('dashboardEmployeeInitials').classList.remove('hidden');" />
+                        <img id="dashboardEmployeeAvatar" src="" alt="Employee avatar" class="hidden w-full h-full rounded-full object-cover" onerror="this.classList.add('hidden'); const initialsEl = document.getElementById('dashboardEmployeeInitials'); if (initialsEl) initialsEl.classList.remove('hidden');" />
                         <div id="dashboardEmployeeInitials" class="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
                             SJ
                         </div>
@@ -214,6 +214,27 @@
         </div>
     </div>
 
+    <!-- Pending Payroll Accounting Approvals -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Pending Payroll Accounting Approvals</h3>
+                <p class="text-gray-600 text-sm">Review and approve payroll submissions for accounting</p>
+            </div>
+            <button onclick="loadPendingPayrollAccountingApprovals()" class="w-full sm:w-auto self-start sm:self-auto text-left sm:text-right text-[#003D7A] hover:underline text-sm font-medium">
+                <i class="fas fa-refresh mr-1"></i> Refresh
+            </button>
+        </div>
+
+        <div id="pendingPayrollAccountingContainer" class="space-y-4">
+            <!-- Pending payroll accounting requests will be loaded here -->
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading payroll accounting requests...</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Approvals Section -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -274,7 +295,7 @@
             
             <div class="flex items-center gap-4">
                 <div class="w-24 h-24 rounded-full bg-white p-1 shadow-lg overflow-hidden">
-                        <img id="modalEmployeeAvatar" src="" alt="Employee avatar" class="hidden w-full h-full rounded-full object-cover" onerror="this.classList.add('hidden'); document.getElementById('modalEmployeeInitials').classList.remove('hidden');" />
+                        <img id="modalEmployeeAvatar" src="" alt="Employee avatar" class="hidden w-full h-full rounded-full object-cover" onerror="this.classList.add('hidden'); const modalInitialsEl = document.getElementById('modalEmployeeInitials'); if (modalInitialsEl) modalInitialsEl.classList.remove('hidden');" />
                         <div class="w-20 h-20 bg-blue-100 border-4 border-white rounded-full flex items-center justify-center text-2xl font-bold text-blue-600" id="modalEmployeeInitials">
                     SJ
                 </div>
@@ -371,6 +392,119 @@
     </div>
 
     
+</div>
+
+<!-- Payroll Accounting Approval Modal -->
+<div id="payrollAccountingApprovalModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white rounded-t-lg flex justify-between items-center">
+            <h2 class="text-2xl font-bold">Payroll Accounting Approval</h2>
+            <button onclick="closePayrollAccountingApprovalModal()" class="hover:bg-white/20 p-2 rounded">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Request Info -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="fas fa-file-invoice-dollar text-blue-600"></i>
+                    Payroll Request Details
+                </h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-600">Month:</p>
+                        <p class="font-bold text-lg" id="approvalPayrollMonth">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Period:</p>
+                        <p class="font-bold text-lg" id="approvalPayrollPeriod">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Date Range:</p>
+                        <p class="font-semibold" id="approvalDateRange">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Submitted:</p>
+                        <p class="font-semibold" id="approvalSubmittedAt">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval Status -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 class="font-bold text-gray-900 mb-3">Approval Status</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 rounded-full" id="ceoStatusIndicator" style="background-color: #fbbf24;"></div>
+                        <div>
+                            <p class="font-semibold">CEO Approval</p>
+                            <p class="text-sm text-gray-600" id="ceoStatusText">Pending</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-4 h-4 rounded-full" id="accountingStatusIndicator" style="background-color: #fbbf24;"></div>
+                        <div>
+                            <p class="font-semibold">Accounting Approval</p>
+                            <p class="text-sm text-gray-600" id="accountingStatusText">Pending</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document and Notes -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 class="font-bold text-gray-900 mb-3">Attached Document</h4>
+                    <div id="documentContainer">
+                        <p class="text-gray-600">No document attached</p>
+                    </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 class="font-bold text-gray-900 mb-3">Notes</h4>
+                    <p id="approvalNotes" class="text-gray-700">No notes provided</p>
+                </div>
+            </div>
+
+            <!-- Payroll Summary -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <h4 class="font-bold text-gray-900 mb-3">Payroll Summary</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left px-4 py-2">Employee</th>
+                                <th class="text-right px-4 py-2">Basic Salary</th>
+                                <th class="text-right px-4 py-2">Allowances</th>
+                                <th class="text-right px-4 py-2">Deductions</th>
+                                <th class="text-right px-4 py-2">Net Pay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payrollSummaryTable">
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-gray-500">Loading payroll data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 p-6 border-t flex justify-end gap-3 rounded-b-lg">
+            <button onclick="closePayrollAccountingApprovalModal()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium">
+                Close
+            </button>
+            <button id="ceoApproveBtn" onclick="approveByCEO()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium hidden">
+                <i class="fas fa-check mr-2"></i>CEO Approve
+            </button>
+            <button id="accountingApproveBtn" onclick="approveByAccounting()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium hidden">
+                <i class="fas fa-check mr-2"></i>Accounting Approve
+            </button>
+        </div>
+    </div>
 </div>
 
 
